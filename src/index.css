@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-brand-50: #effaf8;
+  --color-brand-100: #d5f2ec;
+  --color-brand-200: #aee4da;
+  --color-brand-300: #77cfc1;
+  --color-brand-400: #3fb2a3;
+  --color-brand-500: #1f9687;
+  --color-brand-600: #157a6f;
+  --color-brand-700: #14625a;
+  --color-brand-800: #144f4a;
+  --color-brand-900: #13423e;
+}
+
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f4f5f3;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-text: #006300;
+}
+:root.dark {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --page: #0f1110;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --good-text: #0ca30c;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.tabular { font-variant-numeric: tabular-nums; }
+.recharts-cartesian-axis-tick-value { fill: var(--muted); font-size: 11px; }
+.recharts-cartesian-grid line { stroke: var(--grid); }
+.recharts-legend-item-text { color: var(--text-secondary) !important; font-size: 12px; }
+.recharts-tooltip-wrapper { outline: none; }
+.recharts-surface:focus { outline: none; }
+.fade-in { animation: fadein .25s ease-out; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px) } to { opacity: 1; transform: none } }
+input[type=number]::-webkit-inner-spin-button { opacity: .5; }
+@media print { .no-print { display: none !important; } }

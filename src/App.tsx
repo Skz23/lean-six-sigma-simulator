@@ -23,6 +23,7 @@ const LssPage = lazy(() => import('./pages/LssPage'))
 const ScenariosPage = lazy(() => import('./pages/ScenariosPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 const DocsPage = lazy(() => import('./pages/DocsPage'))
+const GuidePage = lazy(() => import('./pages/GuidePage'))
 
 function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="scenarios" element={<ScenariosPage />} />
             <Route path="reports" element={<ReportsPage />} />
             <Route path="docs" element={<DocsPage />} />
+            <Route path="guide" element={<GuidePage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </Routes>

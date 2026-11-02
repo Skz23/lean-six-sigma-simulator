@@ -14,6 +14,7 @@ import {
   X,
   BookOpen,
   ChevronDown,
+  BookMarked,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -30,6 +31,7 @@ interface NavGroup {
 
 const NAV: NavGroup[] = [
   { label: 'Dashboard général', icon: <LayoutDashboard size={17} />, to: '/' },
+  { label: 'Guide d\'utilisation', icon: <BookMarked size={17} />, to: '/guide' },
   {
     label: 'Lean Manufacturing',
     icon: <Factory size={17} />,
@@ -193,6 +195,9 @@ export default function Layout() {
           </button>
           <ScenarioPicker />
           <div className="ml-auto flex items-center gap-1">
+            <NavLink to="/guide" className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10" title="Guide d'utilisation">
+              <BookMarked size={16} /> <span className="hidden sm:inline">Guide</span>
+            </NavLink>
             <button onClick={toggleTheme} className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10" aria-label="Changer de thème" title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}>
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>

@@ -245,6 +245,11 @@ export default function Dashboard() {
           </div>
         </Card>
       )}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-500/25 bg-brand-500/5 px-4 py-3 text-sm">
+        <span className="font-medium">Première visite ?</span>
+        <span className="text-[var(--text-secondary)]">Le parcours guidé vous fait découvrir l'outil en 11 étapes (≈ 20 min).</span>
+        <Link to="/guide" className="ml-auto rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">Ouvrir le guide</Link>
+      </div>
       {k.good < sc.demand && (
         <div className="mb-4">
           <Note tone="warning" title="Capacité insuffisante">

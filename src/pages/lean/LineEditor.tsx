@@ -1,3 +1,4 @@
+import { ask, notify } from '../../lib/dialog'
 import { useState } from 'react'
 import { ArrowDown, ArrowUp, Factory, Plus, Save, Trash2 } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
@@ -51,8 +52,8 @@ export default function LineEditor() {
   }
   const remove = () => {
     if (sc.stations.length <= 2) return
-    if (sc.process.stationId === station.id) return alert('Ce poste porte la caractéristique critique (CTQ) : choisissez d\'abord un autre poste qualité dans « Paramètres procédé ».')
-    if (!confirm(`Supprimer le poste « ${station.name} » ?`)) return
+    if (sc.process.stationId === station.id) return notify('Ce poste porte la caractéristique critique (CTQ) : choisissez d\'abord un autre poste qualité dans « Paramètres procédé ».')
+    if (!ask(`Supprimer le poste « ${station.name} » ?`)) return
     set((s) => {
       s.stations = s.stations.filter((x) => x.id !== station.id)
     })

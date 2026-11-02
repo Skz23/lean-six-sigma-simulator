@@ -2,6 +2,7 @@
  * Génération du rapport PDF (jsPDF + autotable). Chargé à la demande.
  */
 import { jsPDF } from 'jspdf'
+import { saveFile } from '../lib/download'
 import { autoTable } from 'jspdf-autotable'
 import type { Scenario } from '../engine/types'
 import type { Kpis } from '../engine/kpi'
@@ -348,6 +349,6 @@ export async function generateReport(inp: ReportInput, save = true) {
     doc.text(t(`${B.sc.company.name} — ${inp.title}`), M, 290)
     doc.text(`${i - 1} / ${pages - 1}`, W - M, 290, { align: 'right' })
   }
-  if (save) doc.save(`rapport-lean-six-sigma-${new Date().toISOString().slice(0, 10)}.pdf`)
+  if (save) await saveFile(`rapport-lean-six-sigma-${new Date().toISOString().slice(0, 10)}.pdf`, doc.output('blob'))
   return doc
 }

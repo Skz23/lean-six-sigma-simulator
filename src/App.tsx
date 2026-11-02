@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, MemoryRouter, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -28,9 +28,12 @@ function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
 }
 
+// Version intégrée (artifact) : routage en mémoire, l'URL du cadre hôte n'étant pas modifiable
+const Router = import.meta.env.VITE_EMBED ? MemoryRouter : HashRouter
+
 export default function App() {
   return (
-    <HashRouter>
+    <Router>
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route element={<Layout />}>
@@ -59,6 +62,6 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
-    </HashRouter>
+    </Router>
   )
 }

@@ -3,7 +3,7 @@
  * elle peut être remplacée par une API/base de données sans toucher aux pages.
  */
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Scenario } from '../engine/types'
 import { demoScenarios } from '../data/demo'
 import { demoTools } from '../data/demoTools'
@@ -135,7 +135,34 @@ export const useStore = create<State>()(
       resetDemo: () => set({ ...initial() }),
       importAll: (data) => set((st) => ({ ...st, ...data })),
     }),
-    { name: 'lss-simulator-v1', version: 1 },
+    {
+      name: 'lss-simulator-v1',
+      version: 1,
+      // Stockage tolérant : si localStorage est indisponible, l'application fonctionne sans persistance
+      storage: createJSONStorage(() => ({
+        getItem: (k: string) => {
+          try {
+            return localStorage.getItem(k)
+          } catch {
+            return null
+          }
+        },
+        setItem: (k: string, v: string) => {
+          try {
+            localStorage.setItem(k, v)
+          } catch {
+            /* ignoré */
+          }
+        },
+        removeItem: (k: string) => {
+          try {
+            localStorage.removeItem(k)
+          } catch {
+            /* ignoré */
+          }
+        },
+      })),
+    },
   ),
 )
 

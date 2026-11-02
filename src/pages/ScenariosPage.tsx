@@ -1,3 +1,5 @@
+import { ask, notify } from '../lib/dialog'
+import { saveFile } from '../lib/download'
 import { useRef, useState } from 'react'
 import clsx from 'clsx'
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from 'recharts'
@@ -32,11 +34,7 @@ export default function ScenariosPage() {
 
   const exportJson = () => {
     const data = JSON.stringify({ app: 'lean-six-sigma-simulator', version: 1, exportedAt: new Date().toISOString(), scenarios, tools: st.tools, versions }, null, 2)
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }))
-    a.download = `lss-simulator-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    saveFile(`lss-simulator-${new Date().toISOString().slice(0, 10)}.json`, new Blob([data], { type: 'application/json' })).catch((e) => notify((e as Error).message))
   }
   const importJson = async (f: File) => {
     try {
@@ -45,7 +43,7 @@ export default function ScenariosPage() {
       st.importAll({ scenarios: d.scenarios, tools: d.tools ?? st.tools, versions: d.versions ?? {}, activeId: d.scenarios[0].id, baselineId: d.scenarios[0].id, comparisonId: d.scenarios[d.scenarios.length - 1].id })
       setSelected(d.scenarios.map((s: { id: string }) => s.id))
     } catch (e) {
-      alert(`Import impossible : ${(e as Error).message}`)
+      notify(`Import impossible : ${(e as Error).message}`)
     }
   }
 
@@ -62,7 +60,7 @@ export default function ScenariosPage() {
             <Button onClick={exportJson}><Download size={15} /> Exporter</Button>
             <Button onClick={() => fileRef.current?.click()}><Upload size={15} /> Importer</Button>
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
-            <Button variant="danger" onClick={() => confirm('Réinitialiser toutes les données avec le jeu de démonstration ?') && st.resetDemo()}><RotateCcw size={15} /> Données de démo</Button>
+            <Button variant="danger" onClick={() => ask('Réinitialiser toutes les données avec le jeu de démonstration ?') && st.resetDemo()}><RotateCcw size={15} /> Données de démo</Button>
           </>
         }
       />
@@ -91,7 +89,7 @@ export default function ScenariosPage() {
                 <Button size="sm" onClick={() => st.duplicateScenario(s.id)} title="Dupliquer"><Copy size={12} /></Button>
                 <Button size="sm" onClick={() => st.saveVersion(s.id, `Version du ${new Date().toLocaleString('fr-FR')}`)} title="Enregistrer une version"><Save size={12} /></Button>
                 <Button size="sm" onClick={() => setHistFor(s.id)} title="Historique"><History size={12} /></Button>
-                <Button size="sm" variant="danger" disabled={scenarios.length <= 1} onClick={() => confirm(`Supprimer « ${s.name} » ?`) && st.deleteScenario(s.id)} title="Supprimer"><Trash2 size={12} /></Button>
+                <Button size="sm" variant="danger" disabled={scenarios.length <= 1} onClick={() => ask(`Supprimer « ${s.name} » ?`) && st.deleteScenario(s.id)} title="Supprimer"><Trash2 size={12} /></Button>
               </div>
             </div>
           )
@@ -161,7 +159,7 @@ export default function ScenariosPage() {
                   `${fmt(k.leadTime / 60, 0)} min`,
                   k.good,
                   fmt(k.dimension?.cpk, 2),
-                  <Button key="r" size="sm" onClick={() => confirm('Restaurer cette version ? L\'état actuel sera sauvegardé.') && st.restoreVersion(histFor, v.id)}><RotateCcw size={12} /> Restaurer</Button>,
+                  <Button key="r" size="sm" onClick={() => ask('Restaurer cette version ? L\'état actuel sera sauvegardé.') && st.restoreVersion(histFor, v.id)}><RotateCcw size={12} /> Restaurer</Button>,
                 ]
               })}
             />

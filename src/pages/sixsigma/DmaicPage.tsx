@@ -1,3 +1,4 @@
+import { ask } from '../../lib/dialog'
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
@@ -125,7 +126,7 @@ export default function DmaicPage() {
                 <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={p.gates[p.phase]} onChange={(e) => set((x) => (x.gates[x.phase] = e.target.checked))} />
                 Revue de phase « {PHASES.find((x) => x.id === p.phase)!.label} » validée
               </label>
-              <Button size="sm" variant="danger" onClick={() => { if (confirm('Supprimer ce projet ?')) { setTools((t) => { t.dmaic = t.dmaic.filter((x) => x.id !== p.id) }); setSel(projects.find((x) => x.id !== p.id)?.id) } }}>
+              <Button size="sm" variant="danger" onClick={() => { if (ask('Supprimer ce projet ?')) { setTools((t) => { t.dmaic = t.dmaic.filter((x) => x.id !== p.id) }); setSel(projects.find((x) => x.id !== p.id)?.id) } }}>
                 <Trash2 size={13} />
               </Button>
             </div>

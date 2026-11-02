@@ -71,7 +71,9 @@ export function toNumber(s: string | undefined): number {
   if (s === undefined) return NaN
   let t = s.replace(/[\s  ]/g, '').replace('%', '')
   if (t === '') return NaN
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, '')
+  // Points de milliers seulement s'ils sont multiples (1.250.000) ou suivis d'une virgule décimale (1.250,5) ;
+  // « 25.001 » reste un nombre décimal (format des cellules Excel et des fichiers anglo-saxons)
+  if (/^-?\d{1,3}(\.\d{3}){2,}(,\d+)?$/.test(t) || /^-?\d{1,3}(\.\d{3})+,\d+$/.test(t)) t = t.replace(/\./g, '')
   t = t.replace(',', '.')
   const v = Number(t)
   return Number.isFinite(v) ? v : NaN

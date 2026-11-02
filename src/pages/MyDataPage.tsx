@@ -7,6 +7,7 @@ import { calibrateProcess, scenarioFromStations, subgroupSizeOf } from '../data/
 import { capability } from '../stats/capability'
 import { Badge, Button, Card, Empty, Field, Input, Note, NumberInput, PageHeader, Select, Table, TextArea } from '../components/ui'
 import { saveFile } from '../lib/download'
+import { readXlsx, rowsToTsv, writeXlsx, type Sheet } from '../data/xlsx'
 import { ask, notify } from '../lib/dialog'
 import { eur, fmt, fmtFixed } from '../lib/format'
 
@@ -19,7 +20,7 @@ export default function MyDataPage() {
       <PageHeader icon={<Database size={20} />} title="Mes données" subtitle="Importez vos données réelles, décrivez votre usine et utilisez-les dans tous les outils" />
       <div className="mb-4">
         <Note tone="tip" title="Comment ça marche">
-          1. Téléchargez un modèle CSV ou partez de votre fichier Excel. · 2. Importez-le (fichier .csv ou copier-coller des cellules Excel). · 3. Utilisez vos données : vos mesures apparaissent comme source dans Capabilité et SPC, vos défauts dans le Pareto, votre ligne devient un scénario simulable. · 4. Ouvrez le{' '}
+          1. Téléchargez le modèle Excel ou partez de votre propre classeur. · 2. Importez-le (.xlsx, .csv ou copier-coller de cellules). · 3. Utilisez vos données : vos mesures apparaissent comme source dans Capabilité et SPC, vos défauts dans le Pareto, votre ligne devient un scénario simulable. · 4. Ouvrez le{' '}
           <Link className="underline" to="/plan">Plan d'amélioration</Link> pour obtenir des propositions chiffrées.
         </Note>
       </div>
@@ -50,12 +51,22 @@ export default function MyDataPage() {
 
 function Templates() {
   const dl = (k: DatasetKind) => saveFile(TEMPLATES[k].filename, new Blob(['﻿' + TEMPLATES[k].content], { type: 'text/csv' })).catch((e) => notify((e as Error).message))
+  const dlExcel = () => {
+    const sheets = (['line', 'measures', 'defects'] as DatasetKind[]).map((k) => ({
+      name: k === 'line' ? 'Ligne' : k === 'measures' ? 'Mesures' : 'Défauts',
+      rows: parseTable(TEMPLATES[k].content).map((r, i) => (i === 0 ? r : r.map((c) => (/^-?[\d\s]+(,\d+)?$/.test(c) ? Number(c.replace(/\s/g, '').replace(',', '.')) : c)))),
+    }))
+    saveFile('modele-lean-six-sigma.xlsx', writeXlsx(sheets)).catch((e) => notify((e as Error).message))
+  }
   return (
-    <Card title="Modèles de fichiers" subtitle="À ouvrir dans Excel, compléter, puis enregistrer en CSV (séparateur point-virgule)">
+    <Card title="Modèles de fichiers" subtitle="Complétez le modèle dans Excel puis importez-le tel quel (.xlsx) ou en CSV">
       <div className="flex flex-col gap-2">
+        <Button variant="primary" onClick={dlExcel} className="justify-start">
+          <FileDown size={15} /> Modèle Excel complet (3 feuilles : Ligne, Mesures, Défauts) — .xlsx
+        </Button>
         {(Object.keys(TEMPLATES) as DatasetKind[]).map((k) => (
           <Button key={k} onClick={() => dl(k)} className="justify-start">
-            <FileDown size={15} /> {KIND_LABEL[k]} — {TEMPLATES[k].filename}
+            <FileDown size={15} /> Modèle CSV : {KIND_LABEL[k]}
           </Button>
         ))}
       </div>
@@ -74,6 +85,9 @@ function Importer() {
   const [map, setMap] = useState<Record<string, number> | null>(null)
   const [spec, setSpec] = useState({ name: sc.process.characteristic.name, unit: sc.process.characteristic.unit, lsl: '', usl: '', target: '' })
   const fileRef = useRef<HTMLInputElement>(null)
+  const [sheets, setSheets] = useState<Sheet[]>([])
+  const [sheetIdx, setSheetIdx] = useState(0)
+  const [fileErr, setFileErr] = useState('')
 
   const rows = useMemo(() => parseTable(text), [text])
   const hdr = header ?? hasHeader(rows)
@@ -82,12 +96,44 @@ function Importer() {
   const mapping = map ?? autoMap(kind, headers)
   const result = rows.length ? buildDataset(kind, body, mapping) : null
 
+  const kindFromSheet = (n: string): DatasetKind | null => {
+    const x = n.toLowerCase()
+    if (/ligne|poste|line/.test(x)) return 'line'
+    if (/mesure|valeur|cote|measure/.test(x)) return 'measures'
+    if (/d[ée]faut|rebut|defect/.test(x)) return 'defects'
+    return null
+  }
+  const pickSheet = (all: Sheet[], i: number) => {
+    setSheetIdx(i)
+    setText(rowsToTsv(all[i]?.rows ?? []))
+    const k = kindFromSheet(all[i]?.name ?? '')
+    if (k) setKind(k)
+    setMap(null)
+    setHeader(null)
+  }
   const readFile = async (f: File) => {
+    setFileErr('')
     const buf = await f.arrayBuffer()
-    let t = new TextDecoder('utf-8').decode(buf)
-    if (t.includes('�')) t = new TextDecoder('windows-1252').decode(buf)
-    setText(t)
     setName(f.name.replace(/\.[^.]+$/, ''))
+    if (/\.xls[xm]$/i.test(f.name)) {
+      try {
+        const all = (await readXlsx(buf)).filter((sh) => sh.rows.length)
+        if (!all.length) throw new Error('Le classeur ne contient aucune donnée.')
+        setSheets(all)
+        pickSheet(all, 0)
+      } catch (e) {
+        setFileErr((e as Error).message)
+      }
+      return
+    }
+    if (/\.xls$/i.test(f.name)) {
+      setFileErr('Ancien format Excel (.xls) : dans Excel, faites « Enregistrer sous » → Classeur Excel (.xlsx), puis réimportez.')
+      return
+    }
+    setSheets([])
+    let t = new TextDecoder('utf-8').decode(buf)
+    if (t.includes('\uFFFD')) t = new TextDecoder('windows-1252').decode(buf)
+    setText(t)
     setMap(null)
     setHeader(null)
   }
@@ -106,7 +152,7 @@ function Importer() {
   }
 
   return (
-    <Card title="Importer des données" subtitle="Fichier CSV, ou copier-coller direct de cellules Excel">
+    <Card title="Importer des données" subtitle="Classeur Excel (.xlsx), fichier CSV, ou copier-coller de cellules">
       <div className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Type de données">
@@ -119,11 +165,19 @@ function Importer() {
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={() => fileRef.current?.click()}><FileUp size={15} /> Choisir un fichier CSV</Button>
-          <input ref={fileRef} type="file" accept=".csv,.txt,text/csv,text/plain" className="hidden" onChange={(e) => { if (e.target.files?.[0]) readFile(e.target.files[0]); e.target.value = '' }} />
-          <span className="text-xs text-[var(--muted)]">ou collez vos cellules Excel ci-dessous</span>
+          <Button onClick={() => fileRef.current?.click()}><FileUp size={15} /> Choisir un fichier Excel ou CSV</Button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.xls,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={(e) => { if (e.target.files?.[0]) readFile(e.target.files[0]); e.target.value = '' }} />
+          <span className="text-xs text-[var(--muted)]">.xlsx, .csv — ou collez vos cellules Excel ci-dessous</span>
         </div>
-        <TextArea rows={6} value={text} onChange={(e) => { setText(e.target.value); setMap(null) }} placeholder={TEMPLATES[kind].content} className="font-mono text-xs" />
+        {fileErr && <p className="text-sm text-[var(--critical)]">{fileErr}</p>}
+        {sheets.length > 1 && (
+          <Field label="Feuille du classeur">
+            <Select value={sheetIdx} onChange={(e) => pickSheet(sheets, +e.target.value)}>
+              {sheets.map((sh, i) => <option key={i} value={i}>{sh.name} ({sh.rows.length} lignes)</option>)}
+            </Select>
+          </Field>
+        )}
+        <TextArea rows={6} value={text} onChange={(e) => { setText(e.target.value); setMap(null); setSheets([]) }} placeholder={TEMPLATES[kind].content} className="font-mono text-xs" />
         {rows.length > 0 && (
           <>
             <label className="flex items-center gap-2 text-xs">

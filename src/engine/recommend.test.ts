@@ -14,6 +14,8 @@ describe('import de données', () => {
     expect(toNumber('1 250,5')).toBe(1250.5)
     expect(toNumber('95 %')).toBe(95)
     expect(toNumber('1.250,5')).toBe(1250.5)
+    expect(toNumber('25.001')).toBeCloseTo(25.001, 10)
+    expect(toNumber('1.250.000')).toBe(1250000)
   })
   it('lit un copier-coller Excel (tabulations)', () => {
     expect(parseTable('a\tb\n1\t2')).toEqual([['a', 'b'], ['1', '2']])

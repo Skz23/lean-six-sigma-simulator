@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUrlTab } from '../lib/useUrlTab'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { CartesianGrid, LabelList, ReferenceLine, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
@@ -11,7 +12,8 @@ import { ChartBox, S, axisProps, tooltipStyle } from '../components/charts'
 import { ask } from '../lib/dialog'
 import { fmt, pct } from '../lib/format'
 
-type Tab = 'choose' | 'qqoqcpc' | '8d' | 'a3' | 'ideas' | 'vote' | 'kano'
+const TABS = ['choose', 'qqoqcpc', '8d', 'a3', 'ideas', 'vote', 'kano'] as const
+type Tab = (typeof TABS)[number]
 
 const METHODS: Record<MrpMethod, { name: string; when: string; duration: string; steps: string }> = {
   kaizen: { name: 'Kaizen / PDCA', when: 'Solution connue a priori, problème simple et local.', duration: 'Une journée', steps: 'Plan · Do · Check · Act' },
@@ -116,7 +118,7 @@ export default function MethodPage() {
       if (!t.mrp) t.mrp = JSON.parse(JSON.stringify(mrp))
       fn(t.mrp!)
     })
-  const [tab, setTab] = useState<Tab>('choose')
+  const [tab, setTab] = useUrlTab<Tab>('choose', TABS)
   const [sel, setSel] = useState(mrp.sheets[0]?.id)
   const sheet = mrp.sheets.find((x) => x.id === sel) ?? mrp.sheets[0]
   const setSheet = (fn: (s: ProblemSheet) => void) =>

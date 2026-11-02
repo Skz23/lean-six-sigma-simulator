@@ -1,7 +1,7 @@
 import { ask } from '../../lib/dialog'
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Circle, ClipboardList, Copy, Plus, Trash2 } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from 'recharts'
 import { useStore, uid } from '../../store/useStore'
@@ -33,7 +33,8 @@ export default function DmaicPage() {
   const setTools = useStore((s) => s.setTools)
   const scenarios = useStore((s) => s.scenarios)
   const activeId = useStore((s) => s.activeId)
-  const [sel, setSel] = useState<string | undefined>(projects[0]?.id)
+  const [params] = useSearchParams()
+  const [sel, setSel] = useState<string | undefined>(() => projects.find((x) => x.id === params.get('project'))?.id ?? projects[0]?.id)
   const p = projects.find((x) => x.id === sel)
   const set = (fn: (p: DmaicProject) => void) =>
     setTools((t) => {
@@ -65,8 +66,8 @@ export default function DmaicPage() {
     <div>
       <PageHeader
         icon={<ClipboardList size={20} />}
-        title="Projets DMAIC"
-        subtitle="Espace de conduite de projet Six Sigma : Define · Measure · Analyze · Improve · Control"
+        title="Mes projets"
+        subtitle="Espace projet DMAIC : charte, VOC, SIPOC, causes, solutions, plan de contrôle et revues de phase"
         actions={
           <>
             <Select value={sel} onChange={(e) => setSel(e.target.value)} className="w-80">
@@ -105,6 +106,11 @@ export default function DmaicPage() {
                 <div className="mt-0.5 hidden text-[11px] text-[var(--muted)] md:block">{ph.desc}</div>
               </button>
             ))}
+          </div>
+          <div className="-mt-2 mb-3 text-right text-xs">
+            <Link to={`/dmaic/${p.phase}`} className="text-brand-600 hover:underline dark:text-brand-300">
+              Tous les outils de la phase {PHASES.find((x) => x.id === p.phase)!.label} →
+            </Link>
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
             <Field label="Nom du projet" className="min-w-72 flex-1">

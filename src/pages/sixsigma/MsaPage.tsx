@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useUrlTab } from '../../lib/useUrlTab'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts'
 import { Ruler, Wand2 } from 'lucide-react'
 import { useActiveScenario } from '../../store/useStore'
@@ -10,7 +11,8 @@ import { fmt, fmtFixed, pct } from '../../lib/format'
 import { fmtP } from '../../stats/inference'
 import { parseTable, toNumber } from '../../data/import'
 
-type Tab = 'rr' | 'cmc'
+const TABS = ['rr', 'cmc'] as const
+type Tab = (typeof TABS)[number]
 
 /** Jeu d'essai : pièces réparties sur la dispersion du procédé, biais opérateur et répétabilité réalistes. */
 function demoGage(p: number, o: number, r: number, nominal: number, processSd: number, seed: number): GageData {
@@ -36,7 +38,7 @@ function parseLong(text: string): GageData | string {
 }
 
 export default function MsaPage() {
-  const [tab, setTab] = useState<Tab>('rr')
+  const [tab, setTab] = useUrlTab<Tab>('rr', TABS)
   return (
     <div>
       <PageHeader icon={<Ruler size={20} />} title="Système de mesure (MSA)" subtitle="Peut-on faire confiance aux mesures ? À vérifier en phase Mesurer, avant toute capabilité ou carte de contrôle" />

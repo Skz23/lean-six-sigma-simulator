@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
+import { useUrlTab } from '../lib/useUrlTab'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowRight, BookMarked, CheckCircle2, Circle, Database, Download, Factory, Monitor, RotateCcw, Share2, Sigma, Smartphone } from 'lucide-react'
+import { ArrowRight, BookMarked, CheckCircle2, Circle, Download, Monitor, RotateCcw, Share2, Smartphone } from 'lucide-react'
 import { Badge, Button, Card, Note, PageHeader, Tabs } from '../components/ui'
+import { PhaseIcon } from '../components/PhaseNav'
+import { PHASES, phaseById, toolsOf, type PhaseId } from '../workflow/phases'
 
-type Tab = 'start' | 'tour' | 'modules' | 'install' | 'faq' | 'glossary'
+const TABS = ['start', 'tour', 'modules', 'install', 'faq', 'glossary'] as const
+type Tab = (typeof TABS)[number]
 
 interface Step {
   id: string
+  phase: PhaseId
   title: string
   to: string
   what: string
@@ -15,61 +20,17 @@ interface Step {
 }
 
 const TOUR: Step[] = [
-  { id: 't1', title: 'Constater le problème', to: '/', what: 'Sur le Dashboard, scénario « Situation initiale ».', look: 'Le bandeau orange : la ligne ne couvre pas la demande de 420 pièces. Lead Time ≈ 3,7 h, ≈ 7 % de défauts.' },
-  { id: 't2', title: 'Voir l\'usine tourner', to: '/lean/simulation', what: 'Cliquez sur « Démarrer », puis changez la vitesse (× 60, × 180…).', look: 'Les pièces (points) qui s\'accumulent devant les postes, et le poste encadré en rouge : le goulot.' },
-  { id: 't3', title: 'Lire les indicateurs Lean', to: '/lean/kpi', what: 'Parcourez le tableau des indicateurs et le graphique Yamazumi.', look: 'Le temps de cycle du goulot comparé au Takt Time, et le PCE (part du temps à valeur ajoutée) inférieur à 1 %.' },
-  { id: 't4', title: 'Repérer les gaspillages', to: '/lean/muda', what: 'Cliquez sur chacune des 8 cartes.', look: 'Les gaspillages « élevés », leurs causes probables et les améliorations proposées.' },
-  { id: 't5', title: 'Cartographier le flux', to: '/lean/vsm', what: 'Lisez la VSM de gauche à droite.', look: 'Les triangles de stock et la ligne de temps : presque tout le Lead Time est de l\'attente.' },
-  { id: 't6', title: 'Mesurer la capabilité', to: '/sixsigma/capability', what: 'Regardez l\'histogramme et les indices.', look: 'Cp ≈ 1,5 mais Cpk ≈ 0,7 : le procédé est précis mais décentré vers la limite haute.' },
-  { id: 't7', title: 'Trouver la cause', to: '/sixsigma/stats', what: 'Onglet « Corrélation & régression », variable « Température broche ».', look: 'Une corrélation forte et significative : la température fait grossir le diamètre.' },
-  { id: 't8', title: 'Corriger le réglage', to: '/sixsigma/process', what: 'Déplacez la température de 43 °C vers 35 °C, puis « Appliquer au scénario ».', look: 'Le Cpk prédit qui dépasse 1,33 et les rebuts simulés qui baissent.' },
-  { id: 't9', title: 'Réduire les changements de série', to: '/lean/smed', what: 'Sur le tour CNC, étudiez la décomposition puis « Appliquer au scénario ».', look: 'Le changement de série divisé par 3 à 4 et le débit qui augmente.' },
-  { id: 't10', title: 'Comparer avant / après', to: '/lss', what: 'Avant : Situation initiale · Après : Lean Six Sigma.', look: 'Les gains Lean, Six Sigma et combinés, le ROI et le délai de retour sur investissement.' },
-  { id: 't11', title: 'Produire le rapport', to: '/reports', what: 'Choisissez les sections puis « Générer le rapport PDF ».', look: 'Un rapport de 11 sections prêt à présenter.' },
-]
-
-const MODULES: { icon: React.ReactNode; title: string; intro: string; items: { to: string; name: string; desc: string }[] }[] = [
-  {
-    icon: <Database size={18} />,
-    title: 'Vos données et vos améliorations',
-    intro: 'Utiliser l\'outil sur votre propre usine.',
-    items: [
-      { to: '/data', name: 'Mes données', desc: 'Importer vos mesures, défauts et votre ligne (CSV ou copier-coller Excel), renseigner prix, coûts et demande, caler le modèle qualité sur vos mesures.' },
-      { to: '/methode', name: 'Résolution de problèmes', desc: 'Choisir la démarche (Kaizen, A3, 8D, DMAIC), définir le problème (QQOQCPC), brainstorming et regroupement KJ, vote pondéré, questionnaire de Kano.' },
-      { to: '/plan', name: 'Plan d\'amélioration', desc: 'Diagnostic automatique de vos données et propositions d\'actions chiffrées par simulation (gain annuel, retour sur investissement), puis création du scénario amélioré.' },
-    ],
-  },
-  {
-    icon: <Factory size={18} />,
-    title: 'Lean Manufacturing',
-    intro: 'Optimiser les flux et réduire les gaspillages.',
-    items: [
-      { to: '/lean/line', name: 'Ligne de production', desc: 'Ajouter, modifier, supprimer et déplacer les postes (glisser-déposer). Régler la journée, la demande, la taille de lot et le pilotage poussé / tiré.' },
-      { to: '/lean/simulation', name: 'Simulation', desc: 'Animation de la journée, détection du goulot en direct, historique complet d\'une pièce (recherche par identifiant, ex. P-00123).' },
-      { to: '/lean/kpi', name: 'Indicateurs Lean', desc: 'Takt, Cycle Time, Lead Time, Throughput, WIP, TRS, productivité, VA / NVA, équilibrage.' },
-      { to: '/lean/muda', name: '8 gaspillages', desc: 'Détection automatique, impact en €/jour, causes et pistes d\'amélioration.' },
-      { to: '/lean/vsm', name: 'VSM', desc: 'Cartographie générée automatiquement à partir de la simulation.' },
-      { to: '/lean/smed', name: 'SMED', desc: 'Décomposer un changement de série (interne / externe), simuler le gain, l\'appliquer.' },
-      { to: '/lean/kanban', name: 'Kanban', desc: 'Calcul du nombre de cartes et passage en flux tiré simulé.' },
-      { to: '/lean/5s', name: '5S', desc: 'Audit noté sur 5 dimensions, radar et plan d\'action.' },
-      { to: '/lean/spaghetti', name: 'Spaghetti', desc: 'Faites glisser les postes pour tester une implantation et mesurer les déplacements.' },
-      { to: '/lean/kaizen', name: 'Kaizen', desc: 'Tableau d\'amélioration continue (glisser les cartes entre colonnes), mesure avant / après.' },
-    ],
-  },
-  {
-    icon: <Sigma size={18} />,
-    title: 'Six Sigma',
-    intro: 'Réduire la variabilité et les défauts.',
-    items: [
-      { to: '/sixsigma/dmaic', name: 'Projets DMAIC', desc: 'Conduire un projet de Define à Control : charte, VOC, SIPOC, causes, solutions, plan de contrôle.' },
-      { to: '/sixsigma/process', name: 'Paramètres procédé', desc: 'Tester des réglages (température, pression, vitesse) et voir leur effet prédit puis simulé.' },
-      { to: '/sixsigma/msa', name: 'Système de mesure (R&R)', desc: 'Étude R&R croisée par ANOVA (%R&R, ndc) et méthode de Charbonneau (Cmc) : vérifier l\'instrument avant d\'analyser.' },
-      { to: '/sixsigma/capability', name: 'Capabilité', desc: 'Convention française (Cm, Cmk machine · Cp, Cpk processus) ou internationale ; Cpm et perte de Taguchi ; Box-Cox si les données ne sont pas normales.' },
-      { to: '/sixsigma/spc', name: 'SPC', desc: 'Cartes X̄-R, I-MR, p, np, c, u avec règles de détection au choix.' },
-      { to: '/sixsigma/defects', name: 'Analyse des défauts', desc: 'Registre, Pareto, Ishikawa, 5 Pourquoi, AMDEC avec NPR.' },
-      { to: '/sixsigma/stats', name: 'Statistiques avancées', desc: 'Corrélation, régression, tests d\'hypothèses, ANOVA, plans d\'expériences, distributions, boîtes à moustaches, multi-vari, puissance et effectif, khi².' },
-    ],
-  },
+  { id: 't1', phase: 'define', title: 'Constater le problème', to: '/', what: 'Sur l\'Accueil, scénario « Situation initiale ».', look: 'Le bandeau orange : la ligne ne couvre pas la demande de 420 pièces. Lead Time ≈ 3,7 h, ≈ 7 % de défauts.' },
+  { id: 't5', phase: 'define', title: 'Cartographier le flux', to: '/lean/vsm', what: 'Lisez la VSM de gauche à droite.', look: 'Les triangles de stock et la ligne de temps : presque tout le Lead Time est de l\'attente.' },
+  { id: 't2', phase: 'measure', title: 'Voir l\'usine tourner', to: '/lean/simulation', what: 'Cliquez sur « Démarrer », puis changez la vitesse (× 60, × 180…).', look: 'Les pièces (points) qui s\'accumulent devant les postes, et le poste encadré en rouge : le goulot.' },
+  { id: 't3', phase: 'measure', title: 'Lire les indicateurs Lean', to: '/lean/kpi', what: 'Parcourez le tableau des indicateurs et le graphique Yamazumi.', look: 'Le temps de cycle du goulot comparé au Takt Time, et le PCE (part du temps à valeur ajoutée) inférieur à 1 %.' },
+  { id: 't6', phase: 'measure', title: 'Mesurer la capabilité', to: '/sixsigma/capability', what: 'Regardez l\'histogramme et les indices.', look: 'Cp ≈ 1,5 mais Cpk ≈ 0,7 : le procédé est précis mais décentré vers la limite haute.' },
+  { id: 't4', phase: 'analyze', title: 'Repérer les gaspillages', to: '/lean/muda', what: 'Cliquez sur chacune des 8 cartes.', look: 'Les gaspillages « élevés », leurs causes probables et les améliorations proposées.' },
+  { id: 't7', phase: 'analyze', title: 'Trouver la cause', to: '/sixsigma/stats', what: 'Onglet « Corrélation & régression », variable « Température broche ».', look: 'Une corrélation forte et significative : la température fait grossir le diamètre.' },
+  { id: 't8', phase: 'improve', title: 'Corriger le réglage', to: '/sixsigma/process', what: 'Déplacez la température de 43 °C vers 35 °C, puis « Appliquer au scénario ».', look: 'Le Cpk prédit qui dépasse 1,33 et les rebuts simulés qui baissent.' },
+  { id: 't9', phase: 'improve', title: 'Réduire les changements de série', to: '/lean/smed', what: 'Sur le tour CNC, étudiez la décomposition puis « Appliquer au scénario ».', look: 'Le changement de série divisé par 3 à 4 et le débit qui augmente.' },
+  { id: 't10', phase: 'improve', title: 'Comparer avant / après', to: '/lss', what: 'Avant : Situation initiale · Après : Lean Six Sigma.', look: 'Les gains Lean, Six Sigma et combinés, le ROI et le délai de retour sur investissement.' },
+  { id: 't11', phase: 'control', title: 'Produire le rapport', to: '/reports', what: 'Choisissez les sections puis « Générer le rapport PDF ».', look: 'Un rapport de 11 sections prêt à présenter.' },
 ]
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
@@ -136,7 +97,7 @@ function loadDone(): string[] {
 }
 
 export default function GuidePage() {
-  const [tab, setTab] = useState<Tab>('start')
+  const [tab, setTab] = useUrlTab<Tab>('start', TABS)
   const [done, setDone] = useState<string[]>(loadDone)
   useEffect(() => {
     try {
@@ -157,7 +118,7 @@ export default function GuidePage() {
         tabs={[
           { id: 'start', label: 'Bienvenue' },
           { id: 'tour', label: `Parcours guidé (${progress}/${TOUR.length})` },
-          { id: 'modules', label: 'Les modules' },
+          { id: 'modules', label: 'La démarche & les outils' },
           { id: 'install', label: 'Installer & partager' },
           { id: 'faq', label: 'Questions fréquentes' },
           { id: 'glossary', label: 'Glossaire' },
@@ -211,7 +172,7 @@ export default function GuidePage() {
           </Card>
           <Card title="Comment lire l'écran" className="lg:col-span-3">
             <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div><b>Menu de gauche</b><p className="text-xs text-[var(--muted)]">Les modules. Sur téléphone : icône ☰ en haut à gauche.</p></div>
+              <div><b>Menu de gauche</b><p className="text-xs text-[var(--muted)]">Vos projets et vos données, puis les 5 phases de la démarche DMAIC, chacune avec ses outils. Sur téléphone : icône ☰ en haut à gauche.</p></div>
               <div><b>Scénario actif</b><p className="text-xs text-[var(--muted)]">En haut : toutes les pages affichent les résultats de ce scénario.</p></div>
               <div><b>Couleurs</b><p className="text-xs text-[var(--muted)]">Vert = bon, orange = à surveiller, rouge = problème. Les pourcentages comparent avant / après.</p></div>
               <div><b>Encadrés bleus et verts</b><p className="text-xs text-[var(--muted)]">Explications et conseils pédagogiques pour interpréter les résultats.</p></div>
@@ -243,8 +204,9 @@ export default function GuidePage() {
                 </button>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className={clsx('font-semibold', ok && 'text-[var(--muted)] line-through')}>
+                    <h3 className={clsx('flex flex-wrap items-center gap-2 font-semibold', ok && 'text-[var(--muted)] line-through')}>
                       Étape {i + 1} · {s.title}
+                      <Badge tone="brand">{phaseById(s.phase)!.n} · {phaseById(s.phase)!.label}</Badge>
                     </h3>
                     <Link to={s.to} className="inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
                       Ouvrir <ArrowRight size={13} />
@@ -264,26 +226,39 @@ export default function GuidePage() {
 
       {tab === 'modules' && (
         <div className="space-y-4">
-          {MODULES.map((m) => (
-            <Card key={m.title} title={<span className="inline-flex items-center gap-2">{m.icon} {m.title}</span>} subtitle={m.intro}>
-              <div className="grid gap-2 md:grid-cols-2">
-                {m.items.map((it) => (
-                  <Link key={it.to} to={it.to} className="group rounded-lg border border-black/[.06] p-3 transition-colors hover:border-brand-500 dark:border-white/10">
-                    <div className="flex items-center justify-between font-medium">
-                      {it.name}
-                      <ArrowRight size={14} className="text-[var(--muted)] group-hover:text-brand-600" />
+          <Card title="Une démarche, des outils" subtitle="L'appli suit la démarche DMAIC de résolution de problèmes">
+            <div className="space-y-2 text-sm leading-relaxed text-[var(--text-secondary)]">
+              <p>
+                Les outils ne sont pas rangés par famille (Lean, Six Sigma…) mais par <b className="text-[var(--text-primary)]">étape de la démarche</b>. On ne cherche pas de solution avant d'avoir défini le problème, on ne cherche pas les causes avant d'avoir des données fiables, et on ne clôture pas sans avoir pérennisé.
+              </p>
+              <p>
+                DMAIC est la version complète de la <b className="text-[var(--text-primary)]">MARP</b> (Méthode d'Analyse et de Résolution de Problèmes) : définir, chercher les causes, chercher des solutions, valider, pérenniser. Pour un problème simple, une démarche courte suffit (Kaizen / PDCA, A3, 8D) : voyez « Choisir la démarche » dans la phase Définir.
+              </p>
+              <p>
+                Dans le menu, chaque phase ouvre une page qui rappelle son objectif, les questions à se poser, ses outils, ses livrables et sa revue de fin de phase. La <Link className="text-brand-600 underline" to="/outils">Boîte à outils</Link> liste tous les outils ; <Link className="text-brand-600 underline" to="/sixsigma/dmaic">Mes projets</Link> garde la trace de votre projet.
+              </p>
+            </div>
+          </Card>
+          {PHASES.map((p) => (
+            <Card
+              key={p.id}
+              title={<span className="inline-flex items-center gap-2"><PhaseIcon id={p.id} /> {p.n} · {p.label} <span className="font-normal text-[var(--muted)]">— {p.marp}</span></span>}
+              subtitle={p.goal}
+              actions={<Link to={`/dmaic/${p.id}`} className="text-xs text-brand-600 underline">Ouvrir la phase</Link>}
+            >
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {toolsOf(p.id).map((t) => (
+                  <Link key={t.id} to={t.to} className="group rounded-lg border border-black/[.06] p-3 transition-colors hover:border-brand-500 dark:border-white/10">
+                    <div className="flex items-center justify-between gap-2 font-medium">
+                      {t.name}
+                      <ArrowRight size={14} className="shrink-0 text-[var(--muted)] group-hover:text-brand-600" />
                     </div>
-                    <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{it.desc}</p>
+                    <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{t.desc}</p>
                   </Link>
                 ))}
               </div>
             </Card>
           ))}
-          <div className="grid gap-3 md:grid-cols-3">
-            <Card title="Lean Six Sigma"><p className="text-sm text-[var(--text-secondary)]">Démarche guidée en 6 étapes et tableau comparatif des gains (Lean, Six Sigma, combinés, ROI).</p><Link to="/lss" className="mt-2 inline-block text-sm text-brand-600 underline">Ouvrir</Link></Card>
-            <Card title="Gestion des scénarios"><p className="text-sm text-[var(--text-secondary)]">Créer, dupliquer, comparer, restaurer une version, exporter / importer.</p><Link to="/scenarios" className="mt-2 inline-block text-sm text-brand-600 underline">Ouvrir</Link></Card>
-            <Card title="Rapports"><p className="text-sm text-[var(--text-secondary)]">Rapport PDF professionnel en 11 sections, à partir de deux scénarios.</p><Link to="/reports" className="mt-2 inline-block text-sm text-brand-600 underline">Ouvrir</Link></Card>
-          </div>
         </div>
       )}
 

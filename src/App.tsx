@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { HashRouter, MemoryRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -28,6 +28,8 @@ const MyDataPage = lazy(() => import('./pages/MyDataPage'))
 const PlanPage = lazy(() => import('./pages/PlanPage'))
 const MethodPage = lazy(() => import('./pages/MethodPage'))
 const MsaPage = lazy(() => import('./pages/sixsigma/MsaPage'))
+const PhasePage = lazy(() => import('./pages/PhasePage'))
+const ToolboxPage = lazy(() => import('./pages/ToolboxPage'))
 
 function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
@@ -68,6 +70,10 @@ export default function App() {
             <Route path="plan" element={<PlanPage />} />
             <Route path="methode" element={<MethodPage />} />
             <Route path="sixsigma/msa" element={<MsaPage />} />
+            <Route path="dmaic" element={<Navigate to="/dmaic/define" replace />} />
+            <Route path="dmaic/:phase" element={<PhasePage />} />
+            <Route path="outils" element={<ToolboxPage />} />
+            <Route path="projets" element={<Navigate to="/sixsigma/dmaic" replace />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </Routes>

@@ -9,6 +9,7 @@ import { ChartBox, OeeBars, ParetoChart, S, StationStatesChart, axisProps, toolt
 import { DASHBOARD_WIDGETS, type WidgetId } from '../store/types'
 import { clock, duration, eur, fmt, fmtFixed, pct } from '../lib/format'
 import { verdict } from '../stats/capability'
+import { PhaseStrip } from '../components/PhaseNav'
 
 export default function Dashboard() {
   const sc = useActiveScenario()
@@ -209,7 +210,7 @@ export default function Dashboard() {
     <div>
       <PageHeader
         icon={<LayoutDashboard size={20} />}
-        title="Dashboard général"
+        title="Accueil — tableau de bord"
         subtitle={
           <>
             {sc.company.name} — {sc.name} · journée de {sc.shift.duration / 60} h · simulation reproductible (graine {sc.seed})
@@ -221,6 +222,13 @@ export default function Dashboard() {
           </Button>
         }
       />
+      <div className="mb-4">
+        <div className="mb-1.5 flex items-center justify-between text-xs text-[var(--text-secondary)]">
+          <span className="font-semibold tracking-wide uppercase">Démarche DMAIC</span>
+          <Link to="/sixsigma/dmaic" className="text-brand-600 hover:underline dark:text-brand-300">Mes projets →</Link>
+        </div>
+        <PhaseStrip />
+      </div>
       {editing && (
         <Card title="Widgets du tableau de bord" subtitle="Afficher, masquer et réordonner" className="mb-4">
           <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useUrlTab } from '../../lib/useUrlTab'
 import { Download, Plus, SearchCheck, Trash2 } from 'lucide-react'
 import { useActiveScenario, useStore, uid } from '../../store/useStore'
 import { useSimulation } from '../../store/useSimulation'
@@ -8,14 +9,15 @@ import { FiveWhyEditor, FmeaTable, IshikawaDiagram, IshikawaEditor, rpn } from '
 import { eur, fmt, pct } from '../../lib/format'
 import type { DmaicProject } from '../../store/types'
 
-type Tab = 'log' | 'pareto' | 'ishikawa' | 'why' | 'fmea' | 'root'
+const TABS = ['log', 'pareto', 'ishikawa', 'why', 'fmea', 'root'] as const
+type Tab = (typeof TABS)[number]
 
 export default function DefectsPage() {
   const sc = useActiveScenario()
   const { kpis, results } = useSimulation(sc)
   const tools = useStore((s) => s.tools)
   const setTools = useStore((s) => s.setTools)
-  const [tab, setTab] = useState<Tab>('pareto')
+  const [tab, setTab] = useUrlTab<Tab>('pareto', TABS)
   const datasets = useStore((s) => s.datasets).filter((d) => d.kind === 'defects')
   const [source, setSource] = useState<string>(datasets.length ? datasets[datasets.length - 1].id : 'sim')
   const dsSel = datasets.find((d) => d.id === source)

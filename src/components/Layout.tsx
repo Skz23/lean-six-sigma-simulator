@@ -1,77 +1,43 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import {
-  LayoutDashboard,
-  Factory,
-  Sigma,
-  Combine,
-  FolderKanban,
-  FileText,
-  Moon,
-  Sun,
-  Menu,
-  X,
-  BookOpen,
-  ChevronDown,
-  BookMarked,
-  Database,
-  Sparkles,
-  Compass,
-} from 'lucide-react'
+import { Home, FolderOpen, Database, FolderKanban, FileText, Wrench, BookMarked, BookOpen, Moon, Sun, Menu, X, ChevronRight } from 'lucide-react'
 import { useStore } from '../store/useStore'
+import { PHASES, lastPhase, toolsAt } from '../workflow/phases'
+import { PhaseIcon } from './PhaseNav'
 
 interface NavItem {
   to: string
   label: string
-}
-interface NavGroup {
-  label: string
   icon: React.ReactNode
-  to?: string
-  items?: NavItem[]
 }
 
-const NAV: NavGroup[] = [
-  { label: 'Dashboard général', icon: <LayoutDashboard size={17} />, to: '/' },
-  { label: 'Guide d\'utilisation', icon: <BookMarked size={17} />, to: '/guide' },
+const TOP: NavItem[] = [
+  { label: 'Accueil', icon: <Home size={17} />, to: '/' },
+  { label: 'Mes projets', icon: <FolderOpen size={17} />, to: '/sixsigma/dmaic' },
   { label: 'Mes données', icon: <Database size={17} />, to: '/data' },
-  { label: 'Plan d\'amélioration', icon: <Sparkles size={17} />, to: '/plan' },
-  { label: 'Résolution de problèmes', icon: <Compass size={17} />, to: '/methode' },
-  {
-    label: 'Lean Manufacturing',
-    icon: <Factory size={17} />,
-    items: [
-      { to: '/lean/line', label: 'Ligne de production' },
-      { to: '/lean/simulation', label: 'Simulation' },
-      { to: '/lean/kpi', label: 'Indicateurs Lean' },
-      { to: '/lean/muda', label: '8 gaspillages (Muda)' },
-      { to: '/lean/vsm', label: 'VSM' },
-      { to: '/lean/smed', label: 'SMED' },
-      { to: '/lean/kanban', label: 'Kanban' },
-      { to: '/lean/5s', label: '5S' },
-      { to: '/lean/spaghetti', label: 'Diagramme spaghetti' },
-      { to: '/lean/kaizen', label: 'Kaizen' },
-    ],
-  },
-  {
-    label: 'Six Sigma',
-    icon: <Sigma size={17} />,
-    items: [
-      { to: '/sixsigma/dmaic', label: 'Projets DMAIC' },
-      { to: '/sixsigma/process', label: 'Paramètres procédé' },
-      { to: '/sixsigma/msa', label: 'Système de mesure (R&R)' },
-      { to: '/sixsigma/capability', label: 'Capabilité' },
-      { to: '/sixsigma/spc', label: 'SPC — cartes de contrôle' },
-      { to: '/sixsigma/defects', label: 'Analyse des défauts' },
-      { to: '/sixsigma/stats', label: 'Statistiques avancées' },
-    ],
-  },
-  { label: 'Lean Six Sigma', icon: <Combine size={17} />, to: '/lss' },
-  { label: 'Gestion des scénarios', icon: <FolderKanban size={17} />, to: '/scenarios' },
-  { label: 'Rapports et analyses', icon: <FileText size={17} />, to: '/reports' },
+]
+const RESULTS: NavItem[] = [
+  { label: 'Scénarios', icon: <FolderKanban size={17} />, to: '/scenarios' },
+  { label: 'Rapports', icon: <FileText size={17} />, to: '/reports' },
+]
+const HELP: NavItem[] = [
+  { label: 'Boîte à outils', icon: <Wrench size={17} />, to: '/outils' },
+  { label: 'Guide d\'utilisation', icon: <BookMarked size={17} />, to: '/guide' },
   { label: 'Hypothèses & formules', icon: <BookOpen size={17} />, to: '/docs' },
 ]
+
+/** Phase « courante » : page de phase, ou outil ouvert depuis une phase. */
+function useCurrentPhase(): string | undefined {
+  const loc = useLocation()
+  const m = loc.pathname.match(/^\/dmaic\/(\w+)/)
+  if (m) return m[1]
+  const tools = toolsAt(loc.pathname, loc.search)
+  if (!tools.length) return undefined
+  const last = lastPhase()
+  const phases = tools.flatMap((t) => t.phases)
+  return last && phases.includes(last as never) ? last : phases[0]
+}
 
 function Logo() {
   return (
@@ -89,62 +55,83 @@ function Logo() {
   )
 }
 
+const linkCls = ({ isActive }: { isActive: boolean }) =>
+  clsx('flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors', isActive ? 'bg-white/12 font-medium text-white' : 'text-white/70 hover:bg-white/5 hover:text-white')
+
+function Section({ title }: { title: string }) {
+  return <div className="mt-4 mb-1 px-2.5 text-[10.5px] font-semibold tracking-wider text-white/40 uppercase">{title}</div>
+}
+
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const loc = useLocation()
-  const [open, setOpen] = useState<Record<string, boolean>>({ 'Lean Manufacturing': true, 'Six Sigma': true })
+  const current = useCurrentPhase()
+  const items = (list: NavItem[]) =>
+    list.map((i) => (
+      <NavLink key={i.to} to={i.to} end onClick={onNavigate} className={linkCls}>
+        {i.icon}
+        {i.label}
+      </NavLink>
+    ))
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto bg-[#0f2a28] px-3 py-4 dark:bg-[#0b1a19]">
       <Logo />
-      <div className="mt-5 space-y-0.5">
-        {NAV.map((g) =>
-          g.to ? (
-            <NavLink
-              key={g.label}
-              to={g.to}
-              end
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                clsx('flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors', isActive ? 'bg-white/12 font-medium text-white' : 'text-white/70 hover:bg-white/5 hover:text-white')
-              }
-            >
-              {g.icon}
-              {g.label}
-            </NavLink>
-          ) : (
-            <div key={g.label}>
-              <button
-                onClick={() => setOpen((o) => ({ ...o, [g.label]: !o[g.label] }))}
-                className={clsx(
-                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-white/5',
-                  g.items!.some((i) => loc.pathname.startsWith(i.to)) ? 'text-white' : 'text-white/70',
-                )}
-              >
-                {g.icon}
-                <span className="flex-1 text-left">{g.label}</span>
-                <ChevronDown size={14} className={clsx('transition-transform', open[g.label] ? '' : '-rotate-90')} />
-              </button>
-              {open[g.label] && (
-                <div className="mt-0.5 mb-1 ml-[18px] space-y-0.5 border-l border-white/10 pl-3">
-                  {g.items!.map((i) => (
-                    <NavLink
-                      key={i.to}
-                      to={i.to}
-                      onClick={onNavigate}
-                      className={({ isActive }) =>
-                        clsx('block rounded-md px-2 py-1.5 text-[13px] transition-colors', isActive ? 'bg-brand-500/25 font-medium text-white' : 'text-white/60 hover:text-white')
-                      }
-                    >
-                      {i.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          ),
-        )}
+      <div className="mt-5 space-y-0.5">{items(TOP)}</div>
+      <Section title="Démarche DMAIC" />
+      <div className="space-y-0.5">
+        {PHASES.map((p) => (
+          <Link
+            key={p.id}
+            to={`/dmaic/${p.id}`}
+            onClick={onNavigate}
+            className={clsx(
+              'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors',
+              current === p.id ? 'bg-white/12 font-medium text-white' : 'text-white/70 hover:bg-white/5 hover:text-white',
+            )}
+          >
+            <span className={clsx('grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold', current === p.id ? 'bg-brand-500 text-white' : 'bg-white/10 text-white/80')}>{p.n}</span>
+            <span className="flex-1">{p.label}</span>
+            <span className="text-white/40"><PhaseIcon id={p.id} size={14} /></span>
+          </Link>
+        ))}
       </div>
-      <div className="mt-auto px-2 pt-6 text-[11px] leading-relaxed text-white/40">Laboratoire virtuel d'amélioration continue · données simulées</div>
+      <Section title="Résultats" />
+      <div className="space-y-0.5">{items(RESULTS)}</div>
+      <Section title="Aide" />
+      <div className="space-y-0.5">{items(HELP)}</div>
+      <div className="mt-auto px-2 pt-6 text-[11px] leading-relaxed text-white/40">Laboratoire virtuel d'amélioration continue</div>
     </nav>
+  )
+}
+
+/** Fil d'Ariane d'un outil : phases où il sert. */
+function ToolContext() {
+  const loc = useLocation()
+  const current = useCurrentPhase()
+  const tools = toolsAt(loc.pathname, loc.search)
+  if (!tools.length || loc.pathname.startsWith('/dmaic/')) return null
+  const phases = PHASES.filter((p) => tools.some((t) => t.phases.includes(p.id)))
+  const name = tools.length === 1 ? tools[0].name : undefined
+  return (
+    <div className="no-print mb-4 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+      <span>Démarche DMAIC</span>
+      <ChevronRight size={13} />
+      {phases.map((p, i) => (
+        <span key={p.id} className="flex items-center gap-1.5">
+          {i > 0 && <span className="text-[var(--muted)]">·</span>}
+          <Link
+            to={`/dmaic/${p.id}`}
+            className={clsx('rounded-full px-2 py-0.5 font-medium transition-colors', current === p.id ? 'bg-brand-600/10 text-brand-700 dark:text-brand-300' : 'hover:bg-black/5 dark:hover:bg-white/10')}
+          >
+            {p.n} · {p.label}
+          </Link>
+        </span>
+      ))}
+      {name && (
+        <>
+          <ChevronRight size={13} />
+          <span className="font-medium text-[var(--text-primary)]">{name}</span>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -212,6 +199,7 @@ export default function Layout() {
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
+            <ToolContext />
             <Outlet />
           </div>
         </main>

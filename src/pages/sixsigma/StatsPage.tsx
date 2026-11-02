@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useUrlTab } from '../../lib/useUrlTab'
 import { CartesianGrid, ComposedChart, Line, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis, Bar, BarChart, ErrorBar } from 'recharts'
 import { Calculator } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
@@ -15,7 +16,8 @@ import { LineChart, Legend, ReferenceLine } from 'recharts'
 import { fmt, fmtFixed, parseNumbers, pct } from '../../lib/format'
 import type { Product } from '../../engine/types'
 
-type Tab = 'corr' | 'tests' | 'anova' | 'doe' | 'dist' | 'explore' | 'power' | 'chi2'
+const TABS = ['corr', 'tests', 'anova', 'doe', 'dist', 'explore', 'power', 'chi2'] as const
+type Tab = (typeof TABS)[number]
 
 function measured(products: Product[], stationId: string) {
   return products
@@ -28,7 +30,7 @@ function measured(products: Product[], stationId: string) {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useState<Tab>('corr')
+  const [tab, setTab] = useUrlTab<Tab>('corr', TABS)
   const sc = useActiveScenario()
   return (
     <div>

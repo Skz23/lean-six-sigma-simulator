@@ -59,3 +59,7 @@ Scenario (configuration) ──► LineSimulation ──► SimResults (pièces,
 - Multi-références produit et matrice de changements de série.
 - Partage d'opérateurs entre postes, retouches, maintenance préventive planifiée.
 - Web Worker pour les réplications longues.
+
+## Démarche DMAIC (navigation)
+
+`src/workflow/phases.ts` est la source unique de l'organisation par démarche : les 5 phases (objectif, questions, livrables, revue de fin de phase, équivalent MARP) et le catalogue des outils (adresse, famille, phases où ils servent, outils incontournables). Le menu, les pages de phase (`/dmaic/:phase`), la boîte à outils (`/outils`), le guide et le fil d'Ariane des outils en sont dérivés. Les onglets des pages multi-outils sont pilotés par l'adresse (`?tab=`, `src/lib/useUrlTab.ts`) pour pouvoir ouvrir un outil directement. Les adresses historiques des outils sont conservées. Un test vérifie que chaque outil du catalogue pointe vers une route et un onglet existants.

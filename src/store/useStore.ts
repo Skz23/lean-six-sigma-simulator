@@ -8,6 +8,7 @@ import type { Scenario } from '../engine/types'
 import { demoScenarios } from '../data/demo'
 import { demoTools } from '../data/demoTools'
 import type { ToolsState, WidgetId } from './types'
+import type { Dataset } from '../data/import'
 import { DASHBOARD_WIDGETS } from './types'
 
 export interface Version {
@@ -26,6 +27,10 @@ interface State {
   widgets: WidgetId[]
   baselineId: string
   comparisonId: string
+  datasets: Dataset[]
+  addDataset: (d: Dataset) => void
+  updateDataset: (id: string, fn: (d: Dataset) => void) => void
+  deleteDataset: (id: string) => void
   setActive: (id: string) => void
   updateScenario: (id: string, fn: (s: Scenario) => void, versionLabel?: string) => void
   addScenario: (s: Scenario) => void
@@ -63,6 +68,18 @@ export const useStore = create<State>()(
       ...initial(),
       theme: typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
       widgets: DASHBOARD_WIDGETS.map((w) => w.id),
+      datasets: [],
+      addDataset: (d) => set((st) => ({ datasets: [...st.datasets, d] })),
+      updateDataset: (id, fn) =>
+        set((st) => ({
+          datasets: st.datasets.map((d) => {
+            if (d.id !== id) return d
+            const c = clone(d)
+            fn(c)
+            return c
+          }),
+        })),
+      deleteDataset: (id) => set((st) => ({ datasets: st.datasets.filter((d) => d.id !== id) })),
       setActive: (id) => set({ activeId: id }),
       updateScenario: (id, fn, versionLabel) =>
         set((st) => {

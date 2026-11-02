@@ -15,6 +15,8 @@ import {
   BookOpen,
   ChevronDown,
   BookMarked,
+  Database,
+  Sparkles,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -32,6 +34,8 @@ interface NavGroup {
 const NAV: NavGroup[] = [
   { label: 'Dashboard général', icon: <LayoutDashboard size={17} />, to: '/' },
   { label: 'Guide d\'utilisation', icon: <BookMarked size={17} />, to: '/guide' },
+  { label: 'Mes données', icon: <Database size={17} />, to: '/data' },
+  { label: 'Plan d\'amélioration', icon: <Sparkles size={17} />, to: '/plan' },
   {
     label: 'Lean Manufacturing',
     icon: <Factory size={17} />,

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Activity } from 'lucide-react'
-import { useActiveScenario } from '../../store/useStore'
+import { useActiveScenario, useStore } from '../../store/useStore'
+import { subgroupSizeOf } from '../../data/realScenario'
 import { useSimulation } from '../../store/useSimulation'
 import { RULES, cChart, imrChart, npChart, pChart, uChart, xbarRChart, type ChartType, type ControlChartResult } from '../../stats/spc'
 import { subgroups } from '../../stats/descriptive'
@@ -42,6 +43,9 @@ export default function SpcPage() {
   const [npSize, setNpSize] = useState(25)
   const [rules, setRules] = useState<number[]>([1, 2, 3, 5])
   const [manual, setManual] = useState(false)
+  const datasets = useStore((s) => s.datasets)
+  const [dsId, setDsId] = useState<string>('')
+  const ds = datasets.find((d) => d.id === dsId)
   const [text, setText] = useState('')
   const [showSpec, setShowSpec] = useState(false)
   const c = sc.process.characteristic
@@ -59,7 +63,7 @@ export default function SpcPage() {
   let xLabel = 'Sous-groupe'
   try {
     if (meta.kind === 'var') {
-      const xs = manual ? parseNumbers(text) : dims.map((d) => d.v)
+      const xs = ds?.kind === 'measures' ? ds.values ?? [] : manual ? parseNumbers(text) : dims.map((d) => d.v)
       if (type === 'xbar-r') {
         const g = subgroups(xs, n)
         if (g.length >= 5) chart = xbarRChart(g, rules)
@@ -73,7 +77,14 @@ export default function SpcPage() {
       // Attributs : simulation (toutes les pièces passées au poste CTQ, défauts de ce poste et amont) ou saisie « compte;taille »
       let counts: number[] = []
       let sizes: number[] = []
-      if (manual) {
+      if (ds?.kind === 'defects') {
+        const byDate = new Map<string, number>()
+        for (const d of ds.defects ?? []) byDate.set(d.date || '?', (byDate.get(d.date || '?') ?? 0) + d.count)
+        counts = [...byDate.values()]
+        sizes = counts.map(() => 1)
+        xLabel = 'Date'
+        if (type !== 'c') error = 'Un registre de défauts ne contient pas de tailles d\'échantillon : utilisez la carte c (défauts par période).'
+      } else if (manual) {
         const rows = text.split(/\n+/).map((l) => l.split(/[;\t ]+/).map((x) => parseFloat(x.replace(',', '.')))).filter((r) => Number.isFinite(r[0]))
         counts = rows.map((r) => r[0])
         sizes = rows.map((r) => (Number.isFinite(r[1]) ? r[1] : npSize))
@@ -90,7 +101,8 @@ export default function SpcPage() {
         sizes = h.map((x) => x.n)
         xLabel = 'Heure'
       }
-      if (counts.length < 5) error = 'Au moins 5 échantillons sont nécessaires.'
+      if (error) chart = null
+      else if (counts.length < 5) error = 'Au moins 5 échantillons sont nécessaires.'
       else if (type === 'p') chart = pChart(counts, sizes, rules)
       else if (type === 'np') chart = npChart(counts, sizes[0], rules)
       else if (type === 'c') chart = cChart(counts, rules)
@@ -119,12 +131,32 @@ export default function SpcPage() {
           <Card title="Données">
             <div className="space-y-3">
               <Field label="Source">
-                <Select value={manual ? 'm' : 's'} onChange={(e) => setManual(e.target.value === 'm')}>
+                <Select
+                  value={ds ? ds.id : manual ? 'm' : 's'}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setManual(v === 'm')
+                    const d = datasets.find((x) => x.id === v)
+                    setDsId(d ? d.id : '')
+                    if (d?.kind === 'measures') {
+                      const g = subgroupSizeOf(d.groups)
+                      setType(g > 1 ? 'xbar-r' : 'i-mr')
+                      if (g > 1) setN(g)
+                    } else if (d?.kind === 'defects') setType('c')
+                  }}
+                >
                   <option value="s">Simulation ({sc.name})</option>
+                  {datasets.filter((d) => d.kind !== 'line').length > 0 && (
+                    <optgroup label="Mes données réelles">
+                      {datasets.filter((d) => d.kind !== 'line').map((d) => <option key={d.id} value={d.id}>{d.name} ({d.kind === 'measures' ? 'mesures' : 'défauts'})</option>)}
+                    </optgroup>
+                  )}
                   <option value="m">Saisie manuelle</option>
                 </Select>
               </Field>
-              {manual ? (
+              {ds ? (
+                <p className="text-xs text-[var(--muted)]">Données réelles : « {ds.name} ».</p>
+              ) : manual ? (
                 <Field label={meta.kind === 'var' ? 'Valeurs (ordre chronologique)' : 'Une ligne par échantillon : défauts ; taille'}>
                   <TextArea rows={8} value={text} onChange={(e) => setText(e.target.value)} placeholder={meta.kind === 'var' ? '25.01 25.02 24.99 …' : '3;100\n5;120\n2;95'} />
                 </Field>
@@ -179,7 +211,7 @@ export default function SpcPage() {
                 subtitle={`CL = ${fmtFixed(chart.primary.center, digits)} · UCL/LCL = limites de contrôle calculées sur les données${chart.sigmaWithin ? ` · σ intra = ${fmtFixed(chart.sigmaWithin, 5)}` : ''}`}
                 actions={<Badge tone={chart.primary.signals.length ? 'critical' : 'good'}>{chart.primary.signals.length ? `${chart.primary.signals.length} signal(s)` : 'sous contrôle'}</Badge>}
               >
-                <ControlChartView series={chart.primary} spec={showSpec && meta.kind === 'var' ? { lsl: c.lsl, usl: c.usl } : undefined} digits={digits} xLabel={xLabel} height={280} />
+                <ControlChartView series={chart.primary} spec={showSpec && meta.kind === 'var' ? (ds?.spec ? { lsl: ds.spec.lsl, usl: ds.spec.usl } : { lsl: c.lsl, usl: c.usl }) : undefined} digits={digits} xLabel={xLabel} height={280} />
               </Card>
               {chart.secondary && (
                 <Card title={`Carte ${chart.secondary.name}`} subtitle="Surveille la dispersion à court terme">

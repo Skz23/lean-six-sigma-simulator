@@ -82,3 +82,11 @@ Les coûts associés sont des estimations d'ordre de grandeur, explicitement li�
 - Opérateurs affectés à leur poste (pas de partage dynamique entre postes).
 - Les pannes sont indépendantes entre postes.
 - Le décalage de 1,5 σ du niveau sigma est une convention ; le Z long terme est toujours affiché à côté.
+
+## 7. Données réelles et recommandations
+
+- **Import** : CSV (séparateur `;`, `,` ou tabulation) ou copier-coller Excel ; virgule décimale acceptée. Dans un fichier de ligne, taux de défauts et disponibilité sont exprimés en % (une disponibilité ≤ 1 est lue comme une fraction).
+- **Ligne importée** : CV des temps de cycle 10 % par défaut, stock initial nul (la journée de mise en régime remplit la ligne), paramètres économiques et demande repris du scénario actif puis modifiables.
+- **Calage du modèle qualité** : moyenne mesurée → μ0 ; σ intra-sous-groupe → répétabilité ; √(σ²global − σ²intra) → décalage entre lots ; les effets de réglage (T, P, V) sont neutralisés. La simulation reproduit alors la distribution observée (approximation normale) sans prétendre connaître ses causes.
+- **Recommandations simulées** : chaque action est une hypothèse d'amélioration d'ampleur réaliste (SMED −50 %, disponibilité +4 points, défauts −50 %, recentrage complet, source de variance principale ÷ 2, kanban, ajout de capacité…). Elle est appliquée à une copie du scénario et simulée sur N journées avec les mêmes graines que la référence (nombres aléatoires communs) ; le gain affiché est la différence de marge journalière × jours ouvrés. Verdict « recommandée » si le gain dépasse 20 €/jour et rembourse au moins la moitié de l'investissement indicatif en un an.
+- **Diagnostic des données réelles** : calculé sans simulation — stabilité (carte de contrôle, règles 1, 2, 3, 5), capabilité court/long terme, normalité (Anderson-Darling), Pareto 80 %, AMDEC (NPR ≥ 100 sans action soldée). Le recentrage proposé est l'écart moyenne − cible ; la réduction de dispersion nécessaire vise Cp = 1,33.

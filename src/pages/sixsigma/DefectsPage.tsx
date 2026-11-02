@@ -16,7 +16,9 @@ export default function DefectsPage() {
   const tools = useStore((s) => s.tools)
   const setTools = useStore((s) => s.setTools)
   const [tab, setTab] = useState<Tab>('pareto')
-  const [source, setSource] = useState<'sim' | 'log'>('sim')
+  const datasets = useStore((s) => s.datasets).filter((d) => d.kind === 'defects')
+  const [source, setSource] = useState<string>(datasets.length ? datasets[datasets.length - 1].id : 'sim')
+  const dsSel = datasets.find((d) => d.id === source)
   const [paretoBy, setParetoBy] = useState<'count' | 'cost'>('count')
   const [threshold, setThreshold] = useState(100)
   const [projectId, setProjectId] = useState(tools.dmaic[0]?.id)
@@ -41,7 +43,18 @@ export default function DefectsPage() {
       return acc
     }, {}),
   )
-  const paretoItems = source === 'sim' ? simItems.map((x) => ({ label: x.label, count: x.count })) : logAgg.map((x) => ({ label: x.label, count: paretoBy === 'cost' ? Math.round(x.cost) : x.count }))
+  const agg = (list: { category: string; count: number; cost: number }[]) =>
+    Object.values(
+      list.reduce<Record<string, { label: string; count: number; cost: number }>>((acc, d) => {
+        const e = acc[d.category] ?? { label: d.category, count: 0, cost: 0 }
+        e.count += d.count
+        e.cost += d.count * d.cost
+        acc[d.category] = e
+        return acc
+      }, {}),
+    )
+  const pickAgg = dsSel ? agg(dsSel.defects ?? []) : logAgg
+  const paretoItems = source === 'sim' ? simItems.map((x) => ({ label: x.label, count: x.count })) : pickAgg.map((x) => ({ label: x.label, count: paretoBy === 'cost' ? Math.round(x.cost) : x.count }))
   const total = paretoItems.reduce((s, x) => s + x.count, 0)
   const sortedP = [...paretoItems].sort((a, b) => b.count - a.count)
   let cum = 0
@@ -82,11 +95,12 @@ export default function DefectsPage() {
         <div className="grid gap-4 xl:grid-cols-12">
           <Card title="Diagramme de Pareto" subtitle="Barres : part de chaque catégorie · courbe : cumul · seuil 80 % (loi de Pareto)" className="xl:col-span-8" actions={
             <div className="flex gap-2">
-              <Select value={source} onChange={(e) => setSource(e.target.value as 'sim' | 'log')} className="w-44">
+              <Select value={source} onChange={(e) => setSource(e.target.value)} className="w-52">
                 <option value="sim">Simulation (jour)</option>
                 <option value="log">Registre des défauts</option>
+                {datasets.map((d) => <option key={d.id} value={d.id}>Mes données : {d.name}</option>)}
               </Select>
-              {source === 'log' && (
+              {source !== 'sim' && (
                 <Select value={paretoBy} onChange={(e) => setParetoBy(e.target.value as 'count' | 'cost')} className="w-32">
                   <option value="count">Fréquence</option>
                   <option value="cost">Coût (€)</option>

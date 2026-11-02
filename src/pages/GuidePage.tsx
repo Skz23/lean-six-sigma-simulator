@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
-import { ArrowRight, BookMarked, CheckCircle2, Circle, Download, Factory, Monitor, RotateCcw, Share2, Sigma, Smartphone } from 'lucide-react'
+import { ArrowRight, BookMarked, CheckCircle2, Circle, Database, Download, Factory, Monitor, RotateCcw, Share2, Sigma, Smartphone } from 'lucide-react'
 import { Badge, Button, Card, Note, PageHeader, Tabs } from '../components/ui'
 
 type Tab = 'start' | 'tour' | 'modules' | 'install' | 'faq' | 'glossary'
@@ -29,6 +29,15 @@ const TOUR: Step[] = [
 ]
 
 const MODULES: { icon: React.ReactNode; title: string; intro: string; items: { to: string; name: string; desc: string }[] }[] = [
+  {
+    icon: <Database size={18} />,
+    title: 'Vos données et vos améliorations',
+    intro: 'Utiliser l\'outil sur votre propre usine.',
+    items: [
+      { to: '/data', name: 'Mes données', desc: 'Importer vos mesures, défauts et votre ligne (CSV ou copier-coller Excel), renseigner prix, coûts et demande, caler le modèle qualité sur vos mesures.' },
+      { to: '/plan', name: 'Plan d\'amélioration', desc: 'Diagnostic automatique de vos données et propositions d\'actions chiffrées par simulation (gain annuel, retour sur investissement), puis création du scénario amélioré.' },
+    ],
+  },
   {
     icon: <Factory size={18} />,
     title: 'Lean Manufacturing',
@@ -68,7 +77,9 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   { q: 'Comment repartir de zéro ?', a: <>Dans Gestion des scénarios, bouton <b>Données de démo</b>. Toutes vos données sont alors remplacées par le jeu de démonstration.</> },
   { q: 'Pourquoi les résultats ne changent pas quand je relance ?', a: 'La simulation est reproductible : avec la même « graine aléatoire », la journée est identique. Changez la graine dans Ligne de production pour obtenir une autre journée, ou activez le mode « Robustesse » dans Lean Six Sigma pour moyenner 8 journées.' },
   { q: 'Les chiffres sont-ils réalistes ?', a: <>Ils découlent d'un modèle explicite (pannes, temps de cycle variables, modèle statistique du diamètre…) et ne sont jamais ajustés pour « faire joli ». Tout est documenté dans <Link className="text-brand-600 underline" to="/docs">Hypothèses & formules</Link>.</> },
-  { q: 'Puis-je utiliser mes propres mesures ?', a: 'Oui : dans Capabilité, SPC, Statistiques et Tests, choisissez « Saisie manuelle » et collez vos valeurs depuis Excel (une valeur par ligne ou séparées par des espaces).' },
+  { q: 'Puis-je utiliser mes propres données ?', a: <>Oui. Dans <Link className="text-brand-600 underline" to="/data">Mes données</Link>, importez un fichier CSV ou collez vos cellules Excel : mesures (avec tolérances), défauts, description de votre ligne. Elles deviennent ensuite des sources dans Capabilité, SPC et Analyse des défauts. Pour un essai rapide, la « Saisie manuelle » de ces pages accepte aussi un simple collage de valeurs.</> },
+  { q: 'Comment l\'appli choisit-elle les améliorations proposées ?', a: <>Le <Link className="text-brand-600 underline" to="/plan">Plan d'amélioration</Link> repère les leviers pertinents (goulot, changements de série, pannes, flux poussé, défauts, centrage et dispersion), applique chaque action à une copie de votre scénario, simule plusieurs journées avec les mêmes aléas et mesure la différence. Le gain dépend de la justesse de vos paramètres : vérifiez temps de cycle, disponibilités et coûts.</> },
+  { q: 'Mon fichier Excel ne s\'importe pas', a: 'Enregistrez-le en « CSV (séparateur : point-virgule) » ou copiez les cellules et collez-les. La première ligne doit contenir les noms de colonnes ; les nombres peuvent utiliser la virgule. Le taux de défauts et la disponibilité sont en pourcentage (0,5 = 0,5 %).' },
   { q: 'L\'appli fonctionne-t-elle sans internet ?', a: 'Oui, une fois installée et ouverte une première fois. Elle se met à jour automatiquement quand vous êtes connecté.' },
   { q: 'Le mode sombre ?', a: 'Icône lune / soleil en haut à droite.' },
 ]
@@ -163,6 +174,23 @@ export default function GuidePage() {
               <li><Badge tone="good">Lean Six Sigma</Badge><div className="mt-1 text-xs text-[var(--muted)]">Les deux combinés.</div></li>
             </ul>
             <p className="mt-3 text-xs text-[var(--muted)]">Changez de scénario avec la liste « Scénario actif » en haut de l'écran.</p>
+          </Card>
+          <Card title="Travailler sur votre propre usine" className="lg:col-span-3" subtitle="De vos fichiers Excel à un plan d'amélioration chiffré">
+            <ol className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                ['Préparer', 'Dans Mes données, téléchargez les modèles CSV (ligne, mesures, défauts) et complétez-les dans Excel.', '/data'],
+                ['Importer', 'Importez le fichier ou collez directement vos cellules Excel ; vérifiez l\'association des colonnes.', '/data'],
+                ['Décrire', 'Créez le scénario de votre ligne, renseignez prix, coûts, demande et horaires ; calez le modèle qualité sur vos mesures.', '/data'],
+                ['Analyser', 'Capabilité, cartes de contrôle et Pareto acceptent vos données réelles comme source.', '/sixsigma/capability'],
+                ['Améliorer', 'Le Plan d\'amélioration diagnostique vos données, simule les actions possibles et les classe par gain.', '/plan'],
+              ].map(([t, d, to], i) => (
+                <li key={t} className="rounded-lg bg-black/[.03] p-3 dark:bg-white/[.05]">
+                  <div className="font-semibold">{i + 1}. {t}</div>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">{d}</p>
+                  <Link to={to} className="mt-1.5 inline-block text-xs text-brand-600 underline">Ouvrir</Link>
+                </li>
+              ))}
+            </ol>
           </Card>
           <Card title="Comment lire l'écran" className="lg:col-span-3">
             <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">

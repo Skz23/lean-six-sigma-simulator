@@ -120,7 +120,7 @@ export function NumberInput({ value, onChange, min, max, step, className, suffix
       <input
         type="number"
         className={clsx(inputCls, 'w-full tabular', suffix && 'pr-10')}
-        value={draft ?? String(value)}
+        value={draft ?? (Number.isFinite(value) ? String(value) : '')}
         min={min}
         max={max}
         step={step}

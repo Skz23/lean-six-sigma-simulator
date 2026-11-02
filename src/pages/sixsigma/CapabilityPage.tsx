@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Target } from 'lucide-react'
 import { useMeasurements } from '../../components/DataSource'
 import { capability, interpretCapability, verdict } from '../../stats/capability'
@@ -9,12 +9,23 @@ import { CapabilityHistogram } from '../../components/charts'
 import { fmt, fmtFixed } from '../../lib/format'
 
 export default function CapabilityPage() {
-  const { values, ui, sc, kind } = useMeasurements()
-  const c = sc.process.characteristic
-  const [spec, setSpec] = useState<{ lsl?: number; usl?: number; target?: number }>({ lsl: c.lsl, usl: c.usl, target: c.nominal })
-  const [useLsl, setUseLsl] = useState(true)
+  const { values, ui, sc, kind, spec: srcSpec, subgroupSize } = useMeasurements()
+  const c0 = sc.process.characteristic
+  const c = { ...c0, name: srcSpec?.name || c0.name, unit: srcSpec?.unit || c0.unit }
+  const [spec, setSpec] = useState<{ lsl?: number; usl?: number; target?: number }>({ lsl: c0.lsl, usl: c0.usl, target: c0.nominal })
+    const [useLsl, setUseLsl] = useState(true)
   const [useUsl, setUseUsl] = useState(true)
   const [n, setN] = useState(5)
+  // Spécification et taille de sous-groupe reprises de la source choisie
+  useEffect(() => {
+    if (srcSpec) {
+      setSpec({ lsl: srcSpec.lsl, usl: srcSpec.usl, target: srcSpec.target ?? (srcSpec.lsl !== undefined && srcSpec.usl !== undefined ? (srcSpec.lsl + srcSpec.usl) / 2 : undefined) })
+      setUseLsl(srcSpec.lsl !== undefined)
+      setUseUsl(srcSpec.usl !== undefined)
+    }
+    if (subgroupSize) setN(subgroupSize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind])
   const [forceNormal, setForceNormal] = useState(false)
   const s = { lsl: useLsl ? spec.lsl : undefined, usl: useUsl ? spec.usl : undefined, target: spec.target }
 
@@ -58,7 +69,7 @@ export default function CapabilityPage() {
                   ))}
                 </Select>
               </Field>
-              {kind === 'sim' && <p className="text-[11px] text-[var(--muted)]">Spécification du scénario : {c.lsl} – {c.usl} {c.unit}</p>}
+              {kind === 'sim' && <p className="text-[11px] text-[var(--muted)]">Spécification du scénario : {c0.lsl} – {c0.usl} {c0.unit}</p>}
             </div>
           </Card>
           {sum && (

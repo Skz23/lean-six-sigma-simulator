@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Home, FolderOpen, Database, FolderKanban, FileText, Wrench, BookMarked, BookOpen, Moon, Sun, Menu, X, ChevronRight } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { PHASES, lastPhase, toolsAt } from '../workflow/phases'
+import { PHASES, lastPhase, rememberPhase, stepsOf, toolsAt } from '../workflow/phases'
 import { PhaseIcon } from './PhaseNav'
 
 interface NavItem {
@@ -102,34 +102,56 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-/** Fil d'Ariane d'un outil : phases où il sert. */
+/** Fil d'Ariane d'un outil : phase, sous-étape, et autres étapes où il sert. */
 function ToolContext() {
   const loc = useLocation()
   const current = useCurrentPhase()
+  if (loc.pathname.startsWith('/dmaic/')) return null
   const tools = toolsAt(loc.pathname, loc.search)
-  if (!tools.length || loc.pathname.startsWith('/dmaic/')) return null
-  const phases = PHASES.filter((p) => tools.some((t) => t.phases.includes(p.id)))
-  const name = tools.length === 1 ? tools[0].name : undefined
-  return (
-    <div className="no-print mb-4 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-      <span>Démarche DMAIC</span>
-      <ChevronRight size={13} />
-      {phases.map((p, i) => (
-        <span key={p.id} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-[var(--muted)]">·</span>}
-          <Link
-            to={`/dmaic/${p.id}`}
-            className={clsx('rounded-full px-2 py-0.5 font-medium transition-colors', current === p.id ? 'bg-brand-600/10 text-brand-700 dark:text-brand-300' : 'hover:bg-black/5 dark:hover:bg-white/10')}
-          >
+  if (!tools.length) return null
+  const crumb = 'rounded-full px-2 py-0.5 font-medium hover:bg-black/5 dark:hover:bg-white/10'
+  if (tools.length > 1) {
+    const phases = PHASES.filter((p) => tools.some((t) => t.phases.includes(p.id)))
+    return (
+      <div className="no-print mb-4 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+        <span>Démarche DMAIC</span>
+        <ChevronRight size={13} />
+        {phases.map((p) => (
+          <Link key={p.id} to={`/dmaic/${p.id}`} className={crumb}>
             {p.n} · {p.label}
           </Link>
-        </span>
-      ))}
-      {name && (
+        ))}
+      </div>
+    )
+  }
+  const t = tools[0]
+  const occ = stepsOf(t.id)
+  const main = occ.find((o) => o.phase.id === current) ?? occ[0]
+  const others = occ.filter((o) => o !== main)
+  return (
+    <div className="no-print mb-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--text-secondary)]">
+      {main && (
         <>
+          <Link to={`/dmaic/${main.phase.id}`} className={clsx(crumb, 'bg-brand-600/10 text-brand-700 dark:text-brand-300')}>
+            {main.phase.n} · {main.phase.label}
+          </Link>
           <ChevronRight size={13} />
-          <span className="font-medium text-[var(--text-primary)]">{name}</span>
+          <Link to={`/dmaic/${main.phase.id}`} className={crumb}>
+            {main.step.n} {main.step.title}
+          </Link>
+          <ChevronRight size={13} />
         </>
+      )}
+      <span className="font-medium text-[var(--text-primary)]">{main?.role ?? t.name}</span>
+      {others.length > 0 && (
+        <span className="ml-2 flex flex-wrap items-center gap-1 text-[var(--muted)]">
+          aussi en
+          {others.map((o) => (
+            <Link key={o.step.n} to={`/dmaic/${o.phase.id}`} onClick={() => rememberPhase(o.phase.id)} className={crumb}>
+              {o.step.n} {o.role ? `(${o.role.toLowerCase()})` : o.step.title}
+            </Link>
+          ))}
+        </span>
       )}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useUrlTab } from '../../lib/useUrlTab'
+import { useCurrentTool, useUrlTab } from '../../lib/useUrlTab'
 import { Download, Plus, SearchCheck, Trash2 } from 'lucide-react'
 import { useActiveScenario, useStore, uid } from '../../store/useStore'
 import { useSimulation } from '../../store/useSimulation'
@@ -17,7 +17,8 @@ export default function DefectsPage() {
   const { kpis, results } = useSimulation(sc)
   const tools = useStore((s) => s.tools)
   const setTools = useStore((s) => s.setTools)
-  const [tab, setTab] = useUrlTab<Tab>('pareto', TABS)
+  const tool = useCurrentTool()
+  const [tab, setTab, solo] = useUrlTab<Tab>('pareto', TABS)
   const datasets = useStore((s) => s.datasets).filter((d) => d.kind === 'defects')
   const [source, setSource] = useState<string>(datasets.length ? datasets[datasets.length - 1].id : 'sim')
   const dsSel = datasets.find((d) => d.id === source)
@@ -74,25 +75,27 @@ export default function DefectsPage() {
 
   return (
     <div>
-      <PageHeader icon={<SearchCheck size={20} />} title="Analyse des défauts" subtitle="Registre, Pareto, Ishikawa 6M, 5 Pourquoi, AMDEC et causes racines" />
+      <PageHeader icon={<SearchCheck size={20} />} title={solo && tool ? tool.name : "Analyse des défauts"} subtitle={solo && tool ? tool.desc : "Registre, Pareto, Ishikawa 6M, 5 Pourquoi, AMDEC et causes racines"} />
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label="Défauts simulés (jour)" value={results.scrap} hint={`${pct(1 - kpis.yield, 2)} des pièces sorties`} />
         <Kpi label="Coût de non-qualité" value={eur(kpis.costs.copq)} unit="/ jour" />
         <Kpi label="Défauts enregistrés (registre)" value={fmt(log.reduce((s, d) => s + d.count, 0), 0)} />
         <Kpi label="NPR max (AMDEC)" value={Math.max(0, ...tools.fmea.map(rpn))} tone={Math.max(0, ...tools.fmea.map(rpn)) >= threshold ? 'critical' : undefined} />
       </div>
-      <Tabs<Tab>
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'pareto', label: 'Pareto' },
-          { id: 'log', label: 'Registre des défauts' },
-          { id: 'ishikawa', label: 'Ishikawa 6M' },
-          { id: 'why', label: '5 Pourquoi' },
-          { id: 'fmea', label: 'AMDEC / NPR' },
-          { id: 'root', label: 'Causes racines' },
-        ]}
-      />
+      {!solo && (
+        <Tabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'pareto', label: 'Pareto' },
+            { id: 'log', label: 'Registre des défauts' },
+            { id: 'ishikawa', label: 'Ishikawa 6M' },
+            { id: 'why', label: '5 Pourquoi' },
+            { id: 'fmea', label: 'AMDEC / NPR' },
+            { id: 'root', label: 'Causes racines' },
+          ]}
+        />
+      )}
       {tab === 'pareto' && (
         <div className="grid gap-4 xl:grid-cols-12">
           <Card title="Diagramme de Pareto" subtitle="Barres : part de chaque catégorie · courbe : cumul · seuil 80 % (loi de Pareto)" className="xl:col-span-8" actions={

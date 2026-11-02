@@ -5,7 +5,7 @@ import clsx from 'clsx'
 import { ArrowRight, BookMarked, CheckCircle2, Circle, Download, Monitor, RotateCcw, Share2, Smartphone } from 'lucide-react'
 import { Badge, Button, Card, Note, PageHeader, Tabs } from '../components/ui'
 import { PhaseIcon } from '../components/PhaseNav'
-import { PHASES, phaseById, toolsOf, type PhaseId } from '../workflow/phases'
+import { PHASES, phaseById, toolById, type PhaseId } from '../workflow/phases'
 
 const TABS = ['start', 'tour', 'modules', 'install', 'faq', 'glossary'] as const
 type Tab = (typeof TABS)[number]
@@ -26,7 +26,7 @@ const TOUR: Step[] = [
   { id: 't3', phase: 'measure', title: 'Lire les indicateurs Lean', to: '/lean/kpi', what: 'Parcourez le tableau des indicateurs et le graphique Yamazumi.', look: 'Le temps de cycle du goulot comparé au Takt Time, et le PCE (part du temps à valeur ajoutée) inférieur à 1 %.' },
   { id: 't6', phase: 'measure', title: 'Mesurer la capabilité', to: '/sixsigma/capability', what: 'Regardez l\'histogramme et les indices.', look: 'Cp ≈ 1,5 mais Cpk ≈ 0,7 : le procédé est précis mais décentré vers la limite haute.' },
   { id: 't4', phase: 'analyze', title: 'Repérer les gaspillages', to: '/lean/muda', what: 'Cliquez sur chacune des 8 cartes.', look: 'Les gaspillages « élevés », leurs causes probables et les améliorations proposées.' },
-  { id: 't7', phase: 'analyze', title: 'Trouver la cause', to: '/sixsigma/stats', what: 'Onglet « Corrélation & régression », variable « Température broche ».', look: 'Une corrélation forte et significative : la température fait grossir le diamètre.' },
+  { id: 't7', phase: 'analyze', title: 'Trouver la cause', to: '/sixsigma/stats/corr', what: 'Choisissez la variable « Température broche ».', look: 'Une corrélation forte et significative : la température fait grossir le diamètre.' },
   { id: 't8', phase: 'improve', title: 'Corriger le réglage', to: '/sixsigma/process', what: 'Déplacez la température de 43 °C vers 35 °C, puis « Appliquer au scénario ».', look: 'Le Cpk prédit qui dépasse 1,33 et les rebuts simulés qui baissent.' },
   { id: 't9', phase: 'improve', title: 'Réduire les changements de série', to: '/lean/smed', what: 'Sur le tour CNC, étudiez la décomposition puis « Appliquer au scénario ».', look: 'Le changement de série divisé par 3 à 4 et le débit qui augmente.' },
   { id: 't10', phase: 'improve', title: 'Comparer avant / après', to: '/lss', what: 'Avant : Situation initiale · Après : Lean Six Sigma.', look: 'Les gains Lean, Six Sigma et combinés, le ROI et le délai de retour sur investissement.' },
@@ -246,17 +246,19 @@ export default function GuidePage() {
               subtitle={p.goal}
               actions={<Link to={`/dmaic/${p.id}`} className="text-xs text-brand-600 underline">Ouvrir la phase</Link>}
             >
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {toolsOf(p.id).map((t) => (
-                  <Link key={t.id} to={t.to} className="group rounded-lg border border-black/[.06] p-3 transition-colors hover:border-brand-500 dark:border-white/10">
-                    <div className="flex items-center justify-between gap-2 font-medium">
-                      {t.name}
-                      <ArrowRight size={14} className="shrink-0 text-[var(--muted)] group-hover:text-brand-600" />
-                    </div>
-                    <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{t.desc}</p>
-                  </Link>
+              <ol className="space-y-2 text-sm">
+                {p.steps.map((st) => (
+                  <li key={st.n} className="flex flex-wrap gap-x-2 gap-y-1">
+                    <span className="font-semibold">{st.n} {st.title} :</span>
+                    {st.tools.map((x, i) => (
+                      <span key={x.id}>
+                        <Link to={toolById(x.id)!.to} className="text-brand-600 hover:underline dark:text-brand-300">{x.role ?? toolById(x.id)!.name}</Link>
+                        {i < st.tools.length - 1 ? ' ·' : ''}
+                      </span>
+                    ))}
+                  </li>
                 ))}
-              </div>
+              </ol>
             </Card>
           ))}
         </div>

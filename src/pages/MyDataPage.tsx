@@ -303,7 +303,7 @@ function DatasetRow({ d }: { d: Dataset }) {
         )}
         {d.kind === 'defects' && (
           <>
-            <Button size="sm" onClick={() => nav('/sixsigma/defects')}>Voir le Pareto</Button>
+            <Button size="sm" onClick={() => nav('/sixsigma/defects/pareto')}>Voir le Pareto</Button>
             <Button size="sm" onClick={toLog}>Ajouter au registre des défauts</Button>
           </>
         )}

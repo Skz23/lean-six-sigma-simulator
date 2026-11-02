@@ -1,5 +1,5 @@
 import { ask } from '../../lib/dialog'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Circle, ClipboardList, Copy, Plus, Trash2 } from 'lucide-react'
@@ -21,11 +21,11 @@ import { demoDmaic } from '../../data/demoTools'
 import { fmt, fmtFixed, pct, eur } from '../../lib/format'
 
 const PHASES: { id: DmaicPhase; label: string; desc: string }[] = [
-  { id: 'define', label: 'Define', desc: 'Définir le problème, le client et les objectifs' },
-  { id: 'measure', label: 'Measure', desc: 'Mesurer la performance actuelle' },
-  { id: 'analyze', label: 'Analyze', desc: 'Identifier et vérifier les causes racines' },
-  { id: 'improve', label: 'Improve', desc: 'Tester et sélectionner les solutions' },
-  { id: 'control', label: 'Control', desc: 'Pérenniser les gains' },
+  { id: 'define', label: 'Définir', desc: 'Définir le problème, le client et les objectifs' },
+  { id: 'measure', label: 'Mesurer', desc: 'Mesurer la performance actuelle' },
+  { id: 'analyze', label: 'Analyser', desc: 'Identifier et vérifier les causes racines' },
+  { id: 'improve', label: 'Innover', desc: 'Tester et sélectionner les solutions' },
+  { id: 'control', label: 'Contrôler', desc: 'Pérenniser les gains' },
 ]
 
 export default function DmaicPage() {
@@ -36,6 +36,14 @@ export default function DmaicPage() {
   const [params] = useSearchParams()
   const [sel, setSel] = useState<string | undefined>(() => projects.find((x) => x.id === params.get('project'))?.id ?? projects[0]?.id)
   const p = projects.find((x) => x.id === sel)
+  const wantPhase = params.get('phase') as DmaicPhase | null
+  useEffect(() => {
+    if (wantPhase && PHASES.some((x) => x.id === wantPhase) && sel)
+      setTools((t) => {
+        const x = t.dmaic.find((y) => y.id === sel)
+        if (x) x.phase = wantPhase
+      })
+  }, [wantPhase, sel, setTools])
   const set = (fn: (p: DmaicProject) => void) =>
     setTools((t) => {
       const x = t.dmaic.find((y) => y.id === sel)
@@ -304,7 +312,7 @@ function Analyze({ p, set }: { p: DmaicProject; set: SetFn }) {
           <Table dense head={['Paramètre', 'r', 'R²', 'p-valeur', 'Conclusion']} rows={corrs.map(({ k, c }) => [names[k], fmtFixed(c.r, 3), pct(c.r2, 1), c.pValue < 0.0001 ? '< 0,0001' : fmtFixed(c.pValue, 4), c.pValue < 0.05 ? <Badge key="s" tone="critical">cause confirmée</Badge> : <Badge key="n">non confirmée</Badge>])} />
           <div className="mt-3">
             <Note tone="tip">
-              Une corrélation significative confirme qu'un paramètre <i>transmet</i> sa variation au diamètre. Elle ne dit pas tout : un décalage de consigne (moyenne décentrée) ne se voit pas dans r. Utilisez le DOE (phase Improve) pour quantifier l'effet des consignes. Outils complémentaires : <Link className="underline" to="/sixsigma/stats">régression, ANOVA par lot</Link>.
+              Une corrélation significative confirme qu'un paramètre <i>transmet</i> sa variation au diamètre. Elle ne dit pas tout : un décalage de consigne (moyenne décentrée) ne se voit pas dans r. Utilisez le DOE (phase Improve) pour quantifier l'effet des consignes. Outils complémentaires : <Link className="underline" to="/sixsigma/stats/corr">régression, ANOVA par lot</Link>.
             </Note>
           </div>
         </Card>

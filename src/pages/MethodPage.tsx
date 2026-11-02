@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useUrlTab } from '../lib/useUrlTab'
+import { useCurrentTool, useUrlTab } from '../lib/useUrlTab'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { CartesianGrid, LabelList, ReferenceLine, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
@@ -118,7 +118,8 @@ export default function MethodPage() {
       if (!t.mrp) t.mrp = JSON.parse(JSON.stringify(mrp))
       fn(t.mrp!)
     })
-  const [tab, setTab] = useUrlTab<Tab>('choose', TABS)
+  const tool = useCurrentTool()
+  const [tab, setTab, solo] = useUrlTab<Tab>('choose', TABS)
   const [sel, setSel] = useState(mrp.sheets[0]?.id)
   const sheet = mrp.sheets.find((x) => x.id === sel) ?? mrp.sheets[0]
   const setSheet = (fn: (s: ProblemSheet) => void) =>
@@ -141,20 +142,22 @@ export default function MethodPage() {
 
   return (
     <div>
-      <PageHeader icon={<Compass size={20} />} title="Résolution de problèmes" subtitle="Méthode d'Analyse et de Résolution de Problèmes (MARP) : choisir la démarche, définir le problème, trouver et choisir les solutions" />
-      <Tabs<Tab>
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'choose', label: 'Choisir la démarche' },
-          { id: 'qqoqcpc', label: 'QQOQCPC' },
-          { id: '8d', label: '8D' },
-          { id: 'a3', label: 'A3' },
-          { id: 'ideas', label: 'Brainstorming & KJ' },
-          { id: 'vote', label: 'Vote pondéré' },
-          { id: 'kano', label: 'Kano' },
-        ]}
-      />
+      <PageHeader icon={<Compass size={20} />} title={solo && tool ? tool.name : "Résolution de problèmes"} subtitle={solo && tool ? tool.desc : "Méthode d'Analyse et de Résolution de Problèmes (MARP) : choisir la démarche, définir le problème, trouver et choisir les solutions"} />
+      {!solo && (
+        <Tabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'choose', label: 'Choisir la démarche' },
+            { id: 'qqoqcpc', label: 'QQOQCPC' },
+            { id: '8d', label: '8D' },
+            { id: 'a3', label: 'A3' },
+            { id: 'ideas', label: 'Brainstorming & KJ' },
+            { id: 'vote', label: 'Vote pondéré' },
+            { id: 'kano', label: 'Kano' },
+          ]}
+        />
+      )}
       {tab !== 'choose' && tab !== 'kano' && sheet && sheetBar}
       {tab === 'choose' && <Choose sheet={sheet} setSheet={setSheet} />}
       {tab === 'qqoqcpc' && sheet && <Qqoqcpc sheet={sheet} setSheet={setSheet} />}

@@ -1,10 +1,10 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useEffect } from 'react'
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck, Star } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { Badge, Button, Card, Select } from '../components/ui'
 import { PhaseIcon, PhaseStrip, ToolCard } from '../components/PhaseNav'
-import { PHASES, phaseById, rememberPhase, toolsOf } from '../workflow/phases'
+import { PHASES, phaseById, rememberPhase, toolById } from '../workflow/phases'
 import { useState } from 'react'
 
 export default function PhasePage() {
@@ -15,9 +15,6 @@ export default function PhasePage() {
   const nav = useNavigate()
   const [projId, setProjId] = useState(projects[0]?.id)
   const proj = projects.find((p) => p.id === projId) ?? projects[0]
-  const tools = toolsOf(phase.id)
-  const keyTools = tools.filter((t) => t.key?.includes(phase.id))
-  const otherTools = tools.filter((t) => !t.key?.includes(phase.id))
   const prev = PHASES[phase.n - 2]
   const next = PHASES[phase.n]
 
@@ -95,24 +92,25 @@ export default function PhasePage() {
         </Card>
       </div>
 
-      <h2 className="mt-6 mb-2 flex items-center gap-2 text-sm font-semibold">
-        <Star size={15} className="text-amber-500" /> Outils incontournables
-      </h2>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {keyTools.map((t) => (
-          <ToolCard key={t.id} t={t} phase={phase.id} />
+      <h2 className="mt-6 mb-1 text-base font-semibold">Le chemin de la phase</h2>
+      <p className="mb-3 text-sm text-[var(--text-secondary)]">Suivez les sous-étapes dans l'ordre. Chacune utilise un ou plusieurs outils.</p>
+      <ol className="space-y-4">
+        {phase.steps.map((st) => (
+          <li key={st.n} className="relative rounded-xl border border-black/[.08] bg-black/[.015] p-3.5 dark:border-white/10 dark:bg-white/[.02]">
+            <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span className="rounded-md bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">{st.n}</span>
+              <h3 className="text-[15px] font-semibold">{st.title}</h3>
+              <span className="text-xs text-[var(--text-secondary)]">{st.hint}</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {st.tools.map((x) => {
+                const t = toolById(x.id)!
+                return <ToolCard key={x.id} t={t} phase={phase.id} role={x.role} />
+              })}
+            </div>
+          </li>
         ))}
-      </div>
-      {otherTools.length > 0 && (
-        <>
-          <h2 className="mt-6 mb-2 text-sm font-semibold">Autres outils de la phase</h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {otherTools.map((t) => (
-              <ToolCard key={t.id} t={t} phase={phase.id} />
-            ))}
-          </div>
-        </>
-      )}
+      </ol>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <Card title={<span className="flex items-center gap-2"><PackageCheck size={15} /> Livrables attendus</span>}>

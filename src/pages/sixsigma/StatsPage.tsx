@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useUrlTab } from '../../lib/useUrlTab'
+import { useCurrentTool, useUrlTab } from '../../lib/useUrlTab'
 import { CartesianGrid, ComposedChart, Line, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis, Bar, BarChart, ErrorBar } from 'recharts'
 import { Calculator } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
@@ -30,25 +30,28 @@ function measured(products: Product[], stationId: string) {
 }
 
 export default function StatsPage() {
-  const [tab, setTab] = useUrlTab<Tab>('corr', TABS)
+  const tool = useCurrentTool()
+  const [tab, setTab, solo] = useUrlTab<Tab>('corr', TABS)
   const sc = useActiveScenario()
   return (
     <div>
-      <PageHeader icon={<Calculator size={20} />} title="Statistiques avancées" subtitle="Corrélation, régression, tests d'hypothèses, ANOVA, plans d'expériences et analyse des distributions — avec interprétation" />
-      <Tabs<Tab>
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: 'corr', label: 'Corrélation & régression' },
-          { id: 'tests', label: 'Tests d\'hypothèses' },
-          { id: 'anova', label: 'ANOVA' },
-          { id: 'doe', label: 'Plans d\'expériences (DOE)' },
-          { id: 'dist', label: 'Distributions' },
-          { id: 'explore', label: 'Boîtes & multi-vari' },
-          { id: 'power', label: 'Puissance & effectif' },
-          { id: 'chi2', label: 'Khi²' },
-        ]}
-      />
+      <PageHeader icon={<Calculator size={20} />} title={solo && tool ? tool.name : "Statistiques avancées"} subtitle={solo && tool ? tool.desc : "Corrélation, régression, tests d'hypothèses, ANOVA, plans d'expériences et analyse des distributions — avec interprétation"} />
+      {!solo && (
+        <Tabs<Tab>
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'corr', label: 'Corrélation & régression' },
+            { id: 'tests', label: 'Tests d\'hypothèses' },
+            { id: 'anova', label: 'ANOVA' },
+            { id: 'doe', label: 'Plans d\'expériences (DOE)' },
+            { id: 'dist', label: 'Distributions' },
+            { id: 'explore', label: 'Boîtes & multi-vari' },
+            { id: 'power', label: 'Puissance & effectif' },
+            { id: 'chi2', label: 'Khi²' },
+          ]}
+        />
+      )}
       {tab === 'corr' && <Correlation />}
       {tab === 'tests' && <Tests />}
       {tab === 'anova' && <Anova />}

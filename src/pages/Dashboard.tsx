@@ -154,7 +154,7 @@ export default function Dashboard() {
     pareto: {
       span: 'lg:col-span-8',
       node: (
-        <Card title="Pareto des défauts (simulation)" actions={<Link to="/sixsigma/defects" className="text-xs text-brand-600 hover:underline">Analyse</Link>}>
+        <Card title="Pareto des défauts (simulation)" actions={<Link to="/sixsigma/defects/pareto" className="text-xs text-brand-600 hover:underline">Analyse</Link>}>
           {k.defectsByType.length ? <ParetoChart items={k.defectsByType.map((d) => ({ label: d.type, count: d.count }))} height={250} /> : <p className="text-sm text-[var(--muted)]">Aucun défaut.</p>}
         </Card>
       ),
@@ -261,7 +261,7 @@ export default function Dashboard() {
       {k.good < sc.demand && (
         <div className="mb-4">
           <Note tone="warning" title="Capacité insuffisante">
-            La ligne a produit {k.good} pièces bonnes pour une demande de {sc.demand}. Le goulot <b>{bn.name}</b> a un temps de cycle effectif de {fmt(k.bottleneckCycleTime, 1)} s (pannes et changements de série inclus) pour un takt de {fmt(k.taktTime, 1)} s. Voir <Link className="underline" to="/lean/kpi">l'analyse du goulot</Link>.
+            La ligne a produit {k.good} pièces bonnes pour une demande de {sc.demand}. Le goulot <b>{bn.name}</b> a un temps de cycle effectif de {fmt(k.bottleneckCycleTime, 1)} s (pannes et changements de série inclus) pour un takt de {fmt(k.taktTime, 1)} s. Voir <Link className="underline" to="/lean/toc">l'analyse du goulot</Link>.
           </Note>
         </div>
       )}

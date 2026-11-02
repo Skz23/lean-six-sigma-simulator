@@ -48,6 +48,7 @@ export default function App() {
             <Route path="lean/line" element={<LineEditor />} />
             <Route path="lean/simulation" element={<SimulationPage />} />
             <Route path="lean/kpi" element={<LeanKpis />} />
+            <Route path="lean/toc" element={<LeanKpis section="toc" />} />
             <Route path="lean/muda" element={<MudaPage />} />
             <Route path="lean/5s" element={<FiveSPage />} />
             <Route path="lean/smed" element={<SmedPage />} />
@@ -60,7 +61,9 @@ export default function App() {
             <Route path="sixsigma/capability" element={<CapabilityPage />} />
             <Route path="sixsigma/spc" element={<SpcPage />} />
             <Route path="sixsigma/defects" element={<DefectsPage />} />
+            <Route path="sixsigma/defects/:tab" element={<DefectsPage />} />
             <Route path="sixsigma/stats" element={<StatsPage />} />
+            <Route path="sixsigma/stats/:tab" element={<StatsPage />} />
             <Route path="lss" element={<LssPage />} />
             <Route path="scenarios" element={<ScenariosPage />} />
             <Route path="reports" element={<ReportsPage />} />
@@ -69,7 +72,9 @@ export default function App() {
             <Route path="data" element={<MyDataPage />} />
             <Route path="plan" element={<PlanPage />} />
             <Route path="methode" element={<MethodPage />} />
+            <Route path="methode/:tab" element={<MethodPage />} />
             <Route path="sixsigma/msa" element={<MsaPage />} />
+            <Route path="sixsigma/msa/:tab" element={<MsaPage />} />
             <Route path="dmaic" element={<Navigate to="/dmaic/define" replace />} />
             <Route path="dmaic/:phase" element={<PhasePage />} />
             <Route path="outils" element={<ToolboxPage />} />

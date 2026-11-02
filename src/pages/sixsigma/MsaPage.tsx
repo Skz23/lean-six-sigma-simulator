@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useUrlTab } from '../../lib/useUrlTab'
+import { useCurrentTool, useUrlTab } from '../../lib/useUrlTab'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts'
 import { Ruler, Wand2 } from 'lucide-react'
 import { useActiveScenario } from '../../store/useStore'
@@ -38,11 +38,12 @@ function parseLong(text: string): GageData | string {
 }
 
 export default function MsaPage() {
-  const [tab, setTab] = useUrlTab<Tab>('rr', TABS)
+  const tool = useCurrentTool()
+  const [tab, setTab, solo] = useUrlTab<Tab>('rr', TABS)
   return (
     <div>
-      <PageHeader icon={<Ruler size={20} />} title="Système de mesure (MSA)" subtitle="Peut-on faire confiance aux mesures ? À vérifier en phase Mesurer, avant toute capabilité ou carte de contrôle" />
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ id: 'rr', label: 'Étude R&R croisée (ANOVA)' }, { id: 'cmc', label: 'Méthode de Charbonneau (Cmc)' }]} />
+      <PageHeader icon={<Ruler size={20} />} title={solo && tool ? tool.name : "Système de mesure (MSA)"} subtitle={solo && tool ? tool.desc : "Peut-on faire confiance aux mesures ? À vérifier en phase Mesurer, avant toute capabilité ou carte de contrôle"} />
+      {!solo && <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ id: 'rr', label: 'Étude R&R croisée (ANOVA)' }, { id: 'cmc', label: 'Méthode de Charbonneau (Cmc)' }]} />}
       {tab === 'rr' ? <GageRR /> : <Charbonneau />}
     </div>
   )

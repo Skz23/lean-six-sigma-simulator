@@ -86,3 +86,17 @@ Constantes A₂, D₃, D₄, d₂ (n = 2…10) : tables ASTM E2587 ; c₄ calcul
 ## Fonctions de répartition
 
 Φ : algorithme de West (2005) ; Φ⁻¹ : Acklam + un pas de Halley ; ln Γ : Lanczos ; bêta et gamma incomplètes régularisées : fractions continues (Numerical Recipes). Student, Fisher et χ² en découlent ; leurs quantiles sont obtenus par Newton/bissection.
+
+## Compléments issus des cours ENSGSI (DDQ1, MMI1, MMI2, Lean)
+
+- **TRS** = temps utile / temps requis ; **TRG** = temps utile / temps d'ouverture = TRS × temps requis / temps d'ouverture.
+- **RTF** (ratio de tension de flux) = Σ VA / (Σ VA + Takt × Σ en-cours).
+- **Convention française de capabilité** : Cm = IT / 6σ instantané, Cmk = min(TS − x̄, x̄ − TI) / 3σ instantané (capabilité machine, objectif > 2) ; Cp = IT / 6σ global, Cpk = min(…) / 3σ global (capabilité processus : < 1 non capable, = 1 juste capable, > 1,33 capable, objectif > 1,66). Correspondance : Cm/Cmk ≈ Cp/Cpk « within » international ; Cp/Cpk français ≈ Pp/Ppk.
+- **Cpm** = IT / 6√(σ² + (x̄ − cible)²) ; **perte de Taguchi** moyenne = k(σ² + (x̄ − cible)²), k = coût à la limite / (IT/2)².
+- **Étude R&R croisée (ANOVA)** : modèle pièce + opérateur + interaction ; interaction regroupée avec la répétabilité si p > 0,05 ; composantes de variance σ²rép = CM erreur, σ²inter = (CM PO − CM E)/r, σ²op = (CM O − CM PO)/(p·r), σ²pièce = (CM P − CM PO)/(o·r) (négatifs ramenés à 0). %R&R = σ R&R / σ total : < 10 % souhaitable, 10–20 % acceptable, 20–30 % selon l'application et les coûts, > 30 % à améliorer ; ndc = ⌊1,41 σ pièce / σ R&R⌋. Validé contre un calcul NumPy/SciPy.
+- **Méthode de Charbonneau** : σ mesure = R̄ / d₂ (n = nombre de contrôleurs), Cmc = IT / 6σ mesure ; capable si Cmc > 4, à améliorer si < 3.
+- **Box-Cox** : y = (x^λ − 1)/λ (ln x si λ = 0) ; λ maximise la log-vraisemblance profilée −n/2·ln σ²(λ) + (λ − 1)Σ ln x (λ validé contre SciPy) ; λ arrondi à 0,5 pour l'interprétation ; tolérances transformées de la même façon (ordre inversé si λ < 0).
+- **Puissance d'un test t** : 1 − T(t₁₋α/₂ − δ/ES) + T(−t₁₋α/₂ − δ/ES), ES = σ√(2/n) (deux échantillons) ou σ/√n ; effectif = plus petit n atteignant la puissance visée (n = 17 pour δ = σ, α = 5 %, 80 % — identique à la loi de Student décentrée).
+- **Kano** : table d'évaluation fonctionnel × dysfonctionnel (A, O, M, I, R, Q), catégorie majoritaire, CS+ = (A + O)/(A + O + M + I), CS− = −(O + M)/(A + O + M + I).
+- **Vote pondéré** : score = Σ note(1, 3 ou 9) × poids du critère.
+- **Multi-vari** : décomposition emboîtée de la somme des carrés en pièce à pièce (dans un sous-groupe), temporelle (entre sous-groupes d'un lot) et entre lots.

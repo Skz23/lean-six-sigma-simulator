@@ -17,6 +17,7 @@ import {
   BookMarked,
   Database,
   Sparkles,
+  Compass,
 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
@@ -36,6 +37,7 @@ const NAV: NavGroup[] = [
   { label: 'Guide d\'utilisation', icon: <BookMarked size={17} />, to: '/guide' },
   { label: 'Mes données', icon: <Database size={17} />, to: '/data' },
   { label: 'Plan d\'amélioration', icon: <Sparkles size={17} />, to: '/plan' },
+  { label: 'Résolution de problèmes', icon: <Compass size={17} />, to: '/methode' },
   {
     label: 'Lean Manufacturing',
     icon: <Factory size={17} />,
@@ -58,6 +60,7 @@ const NAV: NavGroup[] = [
     items: [
       { to: '/sixsigma/dmaic', label: 'Projets DMAIC' },
       { to: '/sixsigma/process', label: 'Paramètres procédé' },
+      { to: '/sixsigma/msa', label: 'Système de mesure (R&R)' },
       { to: '/sixsigma/capability', label: 'Capabilité' },
       { to: '/sixsigma/spc', label: 'SPC — cartes de contrôle' },
       { to: '/sixsigma/defects', label: 'Analyse des défauts' },

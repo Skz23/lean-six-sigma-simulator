@@ -26,6 +26,8 @@ const DocsPage = lazy(() => import('./pages/DocsPage'))
 const GuidePage = lazy(() => import('./pages/GuidePage'))
 const MyDataPage = lazy(() => import('./pages/MyDataPage'))
 const PlanPage = lazy(() => import('./pages/PlanPage'))
+const MethodPage = lazy(() => import('./pages/MethodPage'))
+const MsaPage = lazy(() => import('./pages/sixsigma/MsaPage'))
 
 function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
@@ -64,6 +66,8 @@ export default function App() {
             <Route path="guide" element={<GuidePage />} />
             <Route path="data" element={<MyDataPage />} />
             <Route path="plan" element={<PlanPage />} />
+            <Route path="methode" element={<MethodPage />} />
+            <Route path="sixsigma/msa" element={<MsaPage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </Routes>

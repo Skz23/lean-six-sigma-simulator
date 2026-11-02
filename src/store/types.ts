@@ -142,7 +142,35 @@ export interface FiveSAudit {
   area: string
 }
 
+export type MrpMethod = 'kaizen' | 'a3' | '8d' | 'dmaic' | 'projet'
+
+export interface ProblemSheet {
+  id: string
+  title: string
+  createdAt: string
+  method: MrpMethod
+  qqoqcpc: Record<'quoi' | 'qui' | 'ou' | 'quand' | 'comment' | 'pourquoi' | 'combien', string>
+  indicator: string
+  d8: string[]
+  a3: Record<string, string>
+  ideas: { id: string; text: string; group: string; votes: number }[]
+  criteria: { id: string; name: string; weight: number }[]
+  scores: Record<string, Record<string, number>>
+}
+
+export interface KanoItem {
+  id: string
+  need: string
+  answers: { f: 1 | 2 | 3 | 4 | 5; d: 1 | 2 | 3 | 4 | 5 }[]
+}
+
+export interface MrpState {
+  sheets: ProblemSheet[]
+  kano: KanoItem[]
+}
+
 export interface ToolsState {
+  mrp?: MrpState
   fiveS: Record<string, FiveSAudit>
   smed: Record<string, SmedOperation[]>
   kaizen: KaizenItem[]

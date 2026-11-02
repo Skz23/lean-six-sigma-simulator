@@ -32,6 +32,10 @@ export interface Kpis {
   wipEnd: number
   fgStock: number
   oee: number
+  /** TRG = temps utile / temps d'ouverture (pauses et arrêts planifiés compris). */
+  trg: number
+  /** Ratio de tension de flux = Σ VA / (Σ VA + Takt × Σ en-cours), en fraction. */
+  rtf: number
   oeeAvailability: number
   oeePerformance: number
   oeeQuality: number
@@ -152,6 +156,12 @@ export function computeKpis(sc: Scenario, r: SimResults): Kpis {
     wipEnd: r.wipEnd,
     fgStock: r.fgStock,
     oee,
+    trg: oee * (P / r.openTime),
+    rtf: (() => {
+      const enc = r.avgWip + r.fgStock
+      const nva = Number.isFinite(r.taktTime) ? r.taktTime * enc : 0
+      return vaTime + nva > 0 ? vaTime / (vaTime + nva) : 0
+    })(),
     oeeAvailability,
     oeePerformance,
     oeeQuality,

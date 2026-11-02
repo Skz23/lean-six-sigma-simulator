@@ -35,6 +35,7 @@ const MODULES: { icon: React.ReactNode; title: string; intro: string; items: { t
     intro: 'Utiliser l\'outil sur votre propre usine.',
     items: [
       { to: '/data', name: 'Mes données', desc: 'Importer vos mesures, défauts et votre ligne (CSV ou copier-coller Excel), renseigner prix, coûts et demande, caler le modèle qualité sur vos mesures.' },
+      { to: '/methode', name: 'Résolution de problèmes', desc: 'Choisir la démarche (Kaizen, A3, 8D, DMAIC), définir le problème (QQOQCPC), brainstorming et regroupement KJ, vote pondéré, questionnaire de Kano.' },
       { to: '/plan', name: 'Plan d\'amélioration', desc: 'Diagnostic automatique de vos données et propositions d\'actions chiffrées par simulation (gain annuel, retour sur investissement), puis création du scénario amélioré.' },
     ],
   },
@@ -62,10 +63,11 @@ const MODULES: { icon: React.ReactNode; title: string; intro: string; items: { t
     items: [
       { to: '/sixsigma/dmaic', name: 'Projets DMAIC', desc: 'Conduire un projet de Define à Control : charte, VOC, SIPOC, causes, solutions, plan de contrôle.' },
       { to: '/sixsigma/process', name: 'Paramètres procédé', desc: 'Tester des réglages (température, pression, vitesse) et voir leur effet prédit puis simulé.' },
-      { to: '/sixsigma/capability', name: 'Capabilité', desc: 'Cp, Cpk (court terme) et Pp, Ppk (long terme) sur données simulées ou collées.' },
+      { to: '/sixsigma/msa', name: 'Système de mesure (R&R)', desc: 'Étude R&R croisée par ANOVA (%R&R, ndc) et méthode de Charbonneau (Cmc) : vérifier l\'instrument avant d\'analyser.' },
+      { to: '/sixsigma/capability', name: 'Capabilité', desc: 'Convention française (Cm, Cmk machine · Cp, Cpk processus) ou internationale ; Cpm et perte de Taguchi ; Box-Cox si les données ne sont pas normales.' },
       { to: '/sixsigma/spc', name: 'SPC', desc: 'Cartes X̄-R, I-MR, p, np, c, u avec règles de détection au choix.' },
       { to: '/sixsigma/defects', name: 'Analyse des défauts', desc: 'Registre, Pareto, Ishikawa, 5 Pourquoi, AMDEC avec NPR.' },
-      { to: '/sixsigma/stats', name: 'Statistiques avancées', desc: 'Corrélation, régression, tests d\'hypothèses, ANOVA, plans d\'expériences, distributions.' },
+      { to: '/sixsigma/stats', name: 'Statistiques avancées', desc: 'Corrélation, régression, tests d\'hypothèses, ANOVA, plans d\'expériences, distributions, boîtes à moustaches, multi-vari, puissance et effectif, khi².' },
     ],
   },
 ]
@@ -107,6 +109,21 @@ const GLOSSARY: [string, string][] = [
   ['UCL / LCL', 'Limites de contrôle calculées à partir des données (à ne pas confondre avec LSL/USL).'],
   ['AMDEC / NPR', 'Analyse des modes de défaillance ; NPR = Gravité × Occurrence × Détection.'],
   ['DOE', 'Plan d\'expériences : tester plusieurs facteurs à la fois pour mesurer leurs effets.'],
+  ['TRG', 'Taux de Rendement Global = temps utile / temps d\'ouverture (tient compte des arrêts planifiés, contrairement au TRS).'],
+  ['RTF', 'Ratio de Tension de Flux = Σ VA / (Σ VA + Takt × Σ en-cours) : part de valeur ajoutée dans le flux.'],
+  ['Cm / Cmk', 'Capabilité machine (dispersion instantanée, contexte figé). Objectif du cours : > 2.'],
+  ['Cpm', 'Indice de Taguchi : pénalise l\'écart à la cible, pas seulement aux limites.'],
+  ['MSA / R&R', 'Analyse du système de mesure : répétabilité (instrument) et reproductibilité (opérateurs). %R&R < 10 % souhaitable, > 30 % à améliorer.'],
+  ['Cmc', 'Capabilité du moyen de contrôle (méthode de Charbonneau) : IT / 6σ mesure, capable si > 4.'],
+  ['MARP', 'Méthode d\'Analyse et de Résolution de Problèmes : définir, chercher les causes, les solutions, valider, pérenniser.'],
+  ['QQOQCPC', 'Quoi, Qui, Où, Quand, Comment, Pourquoi, Combien : définir un problème par les faits.'],
+  ['8D / A3', 'Démarches de résolution de problèmes en groupe (8D : Ford, avec confinement ; A3 : Toyota, sur une page).'],
+  ['Kano', 'Classement des attentes clients : obligatoires, proportionnelles, attractives, indifférentes.'],
+  ['Vote pondéré', 'Choix collectif : notes 1-3-9 par critère, multipliées par le poids du critère.'],
+  ['Multi-vari', 'Graphique qui montre si la variation vient surtout de pièce à pièce, du temps ou des lots.'],
+  ['Box-Cox', 'Transformation qui rend des données non normales compatibles avec la loi normale.'],
+  ['Puissance', 'Probabilité de détecter une différence qui existe vraiment ; fixe l\'effectif à collecter.'],
+  ['TOC', 'Théorie des contraintes (Goldratt) : identifier, exploiter, subordonner, élever, recommencer.'],
 ]
 
 const KEY = 'lss-guide-progress'

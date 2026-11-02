@@ -3,16 +3,19 @@ import { CartesianGrid, ComposedChart, Line, Scatter, ScatterChart, Tooltip, XAx
 import { Calculator } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
 import { runScenario, useSimulation } from '../../store/useSimulation'
-import { andersonDarling, anovaOneWay, fTestVariances, fmtP, linearRegression, pearson, simpleRegression, tTestOneSample, tTestPaired, tTestTwoSample, twoProportionTest, type Alternative, type TestResult } from '../../stats/inference'
+import { chiSquareIndependence, andersonDarling, anovaOneWay, fTestVariances, fmtP, linearRegression, pearson, simpleRegression, tTestOneSample, tTestPaired, tTestTwoSample, twoProportionTest, type Alternative, type TestResult } from '../../stats/inference'
 import { mean, sorted, summarize } from '../../stats/descriptive'
 import { normalInv } from '../../stats/distributions'
 import { Badge, Card, Field, Note, NumberInput, PageHeader, Select, Stat, Table, Tabs, TextArea } from '../../components/ui'
 import { CapabilityHistogram, ChartBox, S, axisProps, tooltipStyle } from '../../components/charts'
 import { DoeTool } from '../../components/DoeTool'
-import { fmt, fmtFixed, parseNumbers } from '../../lib/format'
+import { BoxPlot } from '../../components/BoxPlot'
+import { minDetectableDifference, sampleSizeForPower, tTestPower } from '../../stats/advanced'
+import { LineChart, Legend, ReferenceLine } from 'recharts'
+import { fmt, fmtFixed, parseNumbers, pct } from '../../lib/format'
 import type { Product } from '../../engine/types'
 
-type Tab = 'corr' | 'tests' | 'anova' | 'doe' | 'dist'
+type Tab = 'corr' | 'tests' | 'anova' | 'doe' | 'dist' | 'explore' | 'power' | 'chi2'
 
 function measured(products: Product[], stationId: string) {
   return products
@@ -39,6 +42,9 @@ export default function StatsPage() {
           { id: 'anova', label: 'ANOVA' },
           { id: 'doe', label: 'Plans d\'expériences (DOE)' },
           { id: 'dist', label: 'Distributions' },
+          { id: 'explore', label: 'Boîtes & multi-vari' },
+          { id: 'power', label: 'Puissance & effectif' },
+          { id: 'chi2', label: 'Khi²' },
         ]}
       />
       {tab === 'corr' && <Correlation />}
@@ -46,6 +52,9 @@ export default function StatsPage() {
       {tab === 'anova' && <Anova />}
       {tab === 'doe' && <DoeTool sc={sc} />}
       {tab === 'dist' && <Distribution />}
+      {tab === 'explore' && <Explore />}
+      {tab === 'power' && <Power />}
+      {tab === 'chi2' && <ChiSquare />}
     </div>
   )
 }
@@ -395,4 +404,202 @@ function useSimValues() {
   const { results } = useSimulation(sc)
   const values = useMemo(() => measured(results.products, sc.process.stationId).map((d) => d.y), [results, sc.process.stationId])
   return { values, sc, mean: mean(values) }
+}
+
+
+// ---------------- Boîtes à moustaches et multi-vari ----------------
+function Explore() {
+  const sc = useActiveScenario()
+  const { results } = useSimulation(sc)
+  const datasets = useStore((s) => s.datasets).filter((d) => d.kind === 'measures' && d.groups?.some(Boolean))
+  const [src, setSrc] = useState('sim')
+  const [k, setK] = useState(5)
+  const ds = datasets.find((d) => d.id === src)
+  // Lots (famille 1) → sous-groupes consécutifs dans le lot (famille 2, le temps) → pièces (famille 3)
+  const lots = useMemo(() => {
+    const map = new Map<string, number[]>()
+    if (ds) ds.values!.forEach((v, i) => map.set(ds.groups![i] || '?', [...(map.get(ds.groups![i] || '?') ?? []), v]))
+    else for (const d of measured(results.products, sc.process.stationId)) map.set(`Lot ${d.batch}`, [...(map.get(`Lot ${d.batch}`) ?? []), d.y])
+    return [...map.entries()]
+      .filter(([, v]) => v.length >= 2)
+      .sort((a, b) => a[0].localeCompare(b[0], 'fr', { numeric: true }))
+      .map(([name, values]) => ({ name, values }))
+  }, [ds, results, sc.process.stationId])
+  const spec = ds ? ds.spec : { lsl: sc.process.characteristic.lsl, usl: sc.process.characteristic.usl }
+  // Multi-vari
+  const points: { x: number; v?: number; sub?: number; lot?: number }[] = []
+  let ssWithin = 0
+  let ssBetweenSub = 0
+  let ssBetweenLot = 0
+  const all = lots.flatMap((l) => l.values)
+  const grand = mean(all)
+  lots.forEach((l, i) => {
+    const subs: number[][] = []
+    for (let j = 0; j < l.values.length; j += k) subs.push(l.values.slice(j, j + k))
+    const lm = mean(l.values)
+    ssBetweenLot += l.values.length * (lm - grand) ** 2
+    subs.forEach((sg, j) => {
+      const x = i + (subs.length > 1 ? (j / (subs.length - 1)) * 0.7 - 0.35 : 0)
+      const m = mean(sg)
+      ssBetweenSub += sg.length * (m - lm) ** 2
+      sg.forEach((v) => {
+        ssWithin += (v - m) ** 2
+        points.push({ x, v })
+      })
+      points.push({ x, sub: m })
+    })
+    points.push({ x: i, lot: lm })
+  })
+  const tot = ssWithin + ssBetweenSub + ssBetweenLot || 1
+  const families = [
+    { name: 'Pièce à pièce (dans un sous-groupe)', v: ssWithin / tot },
+    { name: 'Dans le temps (entre sous-groupes d\'un lot)', v: ssBetweenSub / tot },
+    { name: 'Entre lots', v: ssBetweenLot / tot },
+  ]
+  const top = [...families].sort((a, b) => b.v - a.v)[0]
+  const digits = 4
+  return (
+    <div className="space-y-4">
+      <Card bodyClass="flex flex-wrap items-center gap-3 p-3">
+        <span className="text-sm text-[var(--text-secondary)]">Données</span>
+        <Select value={src} onChange={(e) => setSrc(e.target.value)} className="w-72">
+          <option value="sim">Simulation — {sc.process.characteristic.name} par lot</option>
+          {datasets.map((d) => <option key={d.id} value={d.id}>Mes données : {d.name}</option>)}
+        </Select>
+        <span className="text-sm text-[var(--text-secondary)]">Taille des sous-groupes</span>
+        <Select value={k} onChange={(e) => setK(+e.target.value)} className="w-20">{[3, 4, 5, 8, 10].map((v) => <option key={v}>{v}</option>)}</Select>
+        {lots.length < 2 && <span className="text-sm text-[var(--critical)]">Au moins deux groupes sont nécessaires.</span>}
+      </Card>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card title="Boîtes à moustaches par lot" subtitle="Comparer position et dispersion des groupes d'un coup d'œil">
+          <BoxPlot groups={lots.slice(0, 30)} digits={3} lsl={spec?.lsl} usl={spec?.usl} />
+        </Card>
+        <Card title="Diagramme multi-vari" subtitle="Points : pièces · ligne fine : moyennes des sous-groupes (temps) · ligne épaisse : moyennes des lots">
+          <ChartBox height={300}>
+            <ComposedChart data={points} margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="x" type="number" domain={[-0.5, lots.length - 0.5]} ticks={lots.map((_, i) => i)} tickFormatter={(v) => lots[v]?.name ?? ''} {...axisProps} tick={{ fill: 'var(--muted)', fontSize: 9 }} />
+              <YAxis {...axisProps} domain={['auto', 'auto']} tickFormatter={(v) => fmt(v, 3)} width={56} />
+              <ZAxis range={[10, 10]} />
+              <Tooltip {...tooltipStyle} formatter={(v, n) => [fmtFixed(Number(v), digits), n]} labelFormatter={() => ''} />
+              <Scatter dataKey="v" name="Pièce" fill="var(--axis)" isAnimationActive={false} />
+              <Line dataKey="sub" name="Moyenne sous-groupe" stroke={S(0)} strokeWidth={1.5} dot={{ r: 2.5 }} connectNulls isAnimationActive={false} />
+              <Line dataKey="lot" name="Moyenne lot" stroke={S(1)} strokeWidth={3} dot={{ r: 4 }} connectNulls isAnimationActive={false} />
+              {spec?.lsl !== undefined && <ReferenceLine y={spec.lsl} stroke="var(--critical)" strokeDasharray="5 3" />}
+              {spec?.usl !== undefined && <ReferenceLine y={spec.usl} stroke="var(--critical)" strokeDasharray="5 3" />}
+            </ComposedChart>
+          </ChartBox>
+        </Card>
+      </div>
+      <Card title="Quelle famille de variation domine ?" subtitle="Part de la somme des carrés (décomposition emboîtée lot / sous-groupe / pièce)">
+        <div className="grid gap-3 md:grid-cols-3">
+          {families.map((f) => (
+            <div key={f.name} className="rounded-lg bg-black/[.03] p-3 dark:bg-white/[.05]">
+              <div className="text-xs text-[var(--text-secondary)]">{f.name}</div>
+              <div className="text-xl font-semibold">{pct(f.v, 0)}</div>
+              <div className="mt-1 h-1.5 rounded-full bg-black/[.06] dark:bg-white/10"><div className="h-1.5 rounded-full" style={{ width: `${f.v * 100}%`, background: S(0) }} /></div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-sm">
+          Famille dominante : <b>{top.name.toLowerCase()}</b>.{' '}
+          {top === families[0] ? 'Chercher du côté de la machine et de la méthode (répétabilité, réglage, matière d\'une pièce à l\'autre).' : top === families[1] ? 'Chercher ce qui évolue dans le temps : usure outil, dérive thermique, fatigue, changement d\'équipe.' : 'Chercher ce qui change d\'un lot à l\'autre : réglage au changement de série, lot matière, outillage.'}
+        </p>
+        <p className="mt-1 text-xs text-[var(--muted)]">Le multi-vari oriente la recherche des causes mais n'apporte pas de preuve statistique : confirmer ensuite (ANOVA, tests).</p>
+      </Card>
+    </div>
+  )
+}
+
+// ---------------- Puissance et effectif ----------------
+function Power() {
+  const [sigma, setSigma] = useState(1)
+  const [delta, setDelta] = useState(1)
+  const [alpha, setAlpha] = useState(0.05)
+  const [target, setTarget] = useState(0.8)
+  const [two, setTwo] = useState(true)
+  const [n, setN] = useState(10)
+  const need = sampleSizeForPower(delta, sigma, target, alpha, two)
+  const curve = Array.from({ length: 40 }, (_, i) => {
+    const m = 2 + i * Math.max(1, Math.ceil((Number.isFinite(need) ? need * 2 : 80) / 40))
+    return { n: m, power: tTestPower(m, delta, sigma, alpha, two) * 100 }
+  })
+  return (
+    <div className="grid gap-4 xl:grid-cols-12">
+      <Card title="Paramètres" subtitle="Avant de collecter : combien de mesures faut-il pour détecter un écart ?" className="xl:col-span-4">
+        <div className="space-y-3">
+          <Field label="Test">
+            <Select value={two ? '2' : '1'} onChange={(e) => setTwo(e.target.value === '2')}>
+              <option value="2">t à deux échantillons (comparer avant / après, deux machines…)</option>
+              <option value="1">t à un échantillon (comparer à une cible)</option>
+            </Select>
+          </Field>
+          <Field label="Écart-type estimé σ"><NumberInput value={sigma} min={0.000001} step={0.1} onChange={setSigma} /></Field>
+          <Field label="Différence à détecter δ" hint={`Soit ${fmt(delta / sigma, 2)} écart-type`}><NumberInput value={delta} min={0} step={0.1} onChange={setDelta} /></Field>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Risque α"><Select value={alpha} onChange={(e) => setAlpha(+e.target.value)}>{[0.01, 0.05, 0.1].map((v) => <option key={v} value={v}>{v}</option>)}</Select></Field>
+            <Field label="Puissance visée"><Select value={target} onChange={(e) => setTarget(+e.target.value)}>{[0.8, 0.9, 0.95].map((v) => <option key={v} value={v}>{pct(v, 0)}</option>)}</Select></Field>
+          </div>
+        </div>
+      </Card>
+      <div className="space-y-4 xl:col-span-8">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <Stat label={two ? 'Effectif nécessaire par groupe' : 'Effectif nécessaire'} value={Number.isFinite(need) ? need : '> 100 000'} sub={`pour ${pct(target, 0)} de chances de détecter δ`} />
+          <Stat label="Puissance avec n =" value={<span className="inline-flex items-center gap-2"><NumberInput value={n} min={2} step={1} onChange={(v) => setN(Math.round(v))} className="w-20" /> {pct(tTestPower(n, delta, sigma, alpha, two), 0)}</span>} />
+          <Stat label={`Plus petit écart détectable avec n = ${n}`} value={fmt(minDetectableDifference(n, sigma, target, alpha, two), 3)} />
+        </div>
+        <Card title="Courbe de puissance">
+          <ChartBox height={260}>
+            <LineChart data={curve} margin={{ top: 8, right: 16, bottom: 4, left: -10 }}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="n" {...axisProps} label={{ value: 'Effectif', position: 'insideBottomRight', offset: -2, fill: 'var(--muted)', fontSize: 10 }} />
+              <YAxis {...axisProps} domain={[0, 100]} unit=" %" />
+              <Tooltip {...tooltipStyle} formatter={(v) => [`${fmt(Number(v), 1)} %`, 'Puissance']} labelFormatter={(l) => `n = ${l}`} />
+              <ReferenceLine y={target * 100} stroke="var(--good)" strokeDasharray="5 4" />
+              <Legend verticalAlign="top" height={0} />
+              <Line dataKey="power" stroke={S(0)} strokeWidth={2} dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ChartBox>
+          <Note>La puissance est la probabilité de détecter une différence qui existe vraiment. Un test « non significatif » avec une puissance faible ne prouve rien : l'échantillon était trop petit.</Note>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ---------------- Khi² ----------------
+function ChiSquare() {
+  const sc = useActiveScenario()
+  const { results } = useSimulation(sc)
+  const defaultTable = useMemo(() => {
+    const by = new Map<number, [number, number]>()
+    for (const p of results.products) {
+      if (p.dimension === undefined) continue
+      const e = by.get(p.batch) ?? [0, 0]
+      if (p.defect) e[1]++
+      else e[0]++
+      by.set(p.batch, e)
+    }
+    return [...by.entries()].filter(([, v]) => v[0] + v[1] >= 10).map(([b, v]) => [`Lot ${b}`, String(v[0]), String(v[1])])
+  }, [results])
+  const [text, setText] = useState('')
+  const rows = text.trim() ? text.trim().split(/\n+/).map((l) => l.split(/[;\t]+/)) : defaultTable
+  const head = text.trim() ? null : ['Groupe', 'Conformes', 'Non conformes']
+  const body = rows.map((r) => r.slice(1).map((c) => parseFloat(c.replace(',', '.'))))
+  const valid = body.length >= 2 && body.every((r) => r.length >= 2 && r.length === body[0].length && r.every(Number.isFinite))
+  const res = valid ? chiSquareIndependence(body) : null
+  return (
+    <div className="grid gap-4 xl:grid-cols-12">
+      <Card title="Tableau de contingence" subtitle="La répartition d'une variable dépend-elle d'une autre ?" className="xl:col-span-5">
+        <Field label="Collez un tableau (1re colonne = nom de ligne)" hint="Laissez vide : conformes / non conformes par lot (simulation).">
+          <TextArea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Équipe matin;180;12\nÉquipe après-midi;175;25\nÉquipe nuit;160;31'} className="font-mono text-xs" />
+        </Field>
+        {head && <Table dense className="mt-3" head={head} rows={rows} />}
+      </Card>
+      <div className="xl:col-span-7">
+        {res ? <TestCard r={res} /> : <Card>Tableau invalide : au moins 2 lignes et 2 colonnes numériques de même longueur.</Card>}
+        <div className="mt-4"><Note>Le test du χ² compare les effectifs observés à ceux attendus si les deux variables étaient indépendantes. Condition : effectifs attendus ≥ 5 dans la plupart des cases.</Note></div>
+      </div>
+    </div>
+  )
 }

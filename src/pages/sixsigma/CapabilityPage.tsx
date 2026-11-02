@@ -7,6 +7,8 @@ import { summarize } from '../../stats/descriptive'
 import { Badge, Card, Empty, Field, Note, NumberInput, PageHeader, Select, Stat, Table, Toggle } from '../../components/ui'
 import { CapabilityHistogram } from '../../components/charts'
 import { fmt, fmtFixed } from '../../lib/format'
+import { boxCox, cpm, findBoxCoxLambda, taguchiLoss, transformSpec } from '../../stats/advanced'
+import { eur } from '../../lib/format'
 
 export default function CapabilityPage() {
   const { values, ui, sc, kind, spec: srcSpec, subgroupSize } = useMeasurements()
@@ -27,6 +29,23 @@ export default function CapabilityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kind])
   const [forceNormal, setForceNormal] = useState(false)
+  // Convention : internationale (ISO 22514 / Minitab) ou française (cours ENSGSI / AFNOR : Cm-Cmk machine, Cp-Cpk processus)
+  const [conv, setConvState] = useState<'intl' | 'fr'>(() => {
+    try {
+      return (localStorage.getItem('lss-cap-convention') as 'intl' | 'fr') || 'fr'
+    } catch {
+      return 'fr'
+    }
+  })
+  const setConv = (v: 'intl' | 'fr') => {
+    setConvState(v)
+    try {
+      localStorage.setItem('lss-cap-convention', v)
+    } catch {
+      /* ignoré */
+    }
+  }
+  const [lossCost, setLossCost] = useState(sc.costs.materialCost)
   const s = { lsl: useLsl ? spec.lsl : undefined, usl: useUsl ? spec.usl : undefined, target: spec.target }
 
   const enough = values.length >= Math.max(10, n * 3)
@@ -36,6 +55,16 @@ export default function CapabilityPage() {
   const showNormal = !!ad && (ad.normal || forceNormal)
   const digits = 4
 
+  const frTone = (v: number | undefined, machine: boolean) => {
+    if (v === undefined) return undefined
+    const [ok, mid] = machine ? [2, 1.33] : [1.33, 1]
+    return v >= ok ? 'good' : v >= mid ? 'warning' : 'critical'
+  }
+  const frLabel = (v: number | undefined, machine: boolean) => {
+    if (v === undefined) return ''
+    const [ok, mid] = machine ? [2, 1.33] : [1.33, 1]
+    return v >= ok ? 'capable' : v >= mid ? 'juste capable' : 'non capable'
+  }
   const vTone = (v?: number) => {
     const x = verdict(v)
     return x === 'excellent' || x === 'capable' ? 'good' : x === 'limite' ? 'warning' : 'critical'
@@ -43,7 +72,7 @@ export default function CapabilityPage() {
 
   return (
     <div>
-      <PageHeader icon={<Target size={20} />} title="Capabilité des processus" subtitle="Capabilité court terme (Cp, Cpk) et performance long terme (Pp, Ppk) — limites de spécification = voix du client" />
+      <PageHeader icon={<Target size={20} />} title="Capabilité des processus" subtitle="Capabilité court terme (machine) et long terme (processus) — limites de spécification = voix du client" />
       <div className="grid gap-4 xl:grid-cols-12">
         <div className="space-y-4 xl:col-span-4">
           <Card title="Données et spécifications">
@@ -106,6 +135,32 @@ export default function CapabilityPage() {
                   </Note>
                 </div>
               </Card>
+              <Card bodyClass="flex flex-wrap items-center gap-3 p-3">
+                <span className="text-sm text-[var(--text-secondary)]">Convention</span>
+                <Select value={conv} onChange={(e) => setConv(e.target.value as 'intl' | 'fr')} className="w-96">
+                  <option value="fr">Française (cours ENSGSI / AFNOR) : Cm, Cmk machine · Cp, Cpk processus</option>
+                  <option value="intl">Internationale (ISO 22514 / Minitab) : Cp, Cpk · Pp, Ppk</option>
+                </Select>
+                <span className="text-xs text-[var(--muted)]">Mêmes calculs, noms et seuils différents.</span>
+              </Card>
+              {conv === 'fr' ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card title="Capabilité machine — dispersion instantanée" subtitle={`σ instantané = ${fmtFixed(r.sigmaWithin, 5)} (${n > 1 ? `R̄/d₂, n = ${n}` : 'MR̄/1,128'}) · contexte 4M figé, court terme`}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <IndexTile name="Cm" v={r.cp} tone={frTone(r.cp, true)} label={frLabel(r.cp, true)} desc="IT / 6σ instantané" />
+                      <IndexTile name="Cmk" v={r.cpk} tone={frTone(r.cpk, true)} label={frLabel(r.cpk, true)} desc="Centrage machine" />
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--muted)]">Objectif du cours : Cm et Cmk &gt; 2.</p>
+                  </Card>
+                  <Card title="Capabilité processus — dispersion globale" subtitle={`σ global = ${fmtFixed(r.sigmaOverall, 5)} · production « normale », moyen terme (5M)`}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <IndexTile name="Cp" v={r.pp} tone={frTone(r.pp, false)} label={frLabel(r.pp, false)} desc="IT / 6σ global" />
+                      <IndexTile name="Cpk" v={r.ppk} tone={frTone(r.ppk, false)} label={frLabel(r.ppk, false)} desc="Centrage processus" />
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--muted)]">Cpk &lt; 1 : non capable · = 1 : juste capable · &gt; 1,33 : capable (objectif amélioration : &gt; 1,66). PPM attendus : {fmt(r.ppmOverall, 0)}.</p>
+                  </Card>
+                </div>
+              ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <Card title="Capabilité — court terme (within)" subtitle={`σ intra = ${fmtFixed(r.sigmaWithin, 5)} (${n > 1 ? `R̄/d₂, n = ${n}` : 'MR̄/1,128'})`}>
                   <div className="grid grid-cols-2 gap-2">
@@ -126,9 +181,23 @@ export default function CapabilityPage() {
                   <p className="mt-2 text-xs text-[var(--muted)]">PPM attendus (long terme) : {fmt(r.ppmOverall, 0)} · Z.bench : {fmtFixed(r.zBenchOverall, 2)}</p>
                 </Card>
               </div>
+              )}
+              {s.lsl !== undefined && s.usl !== undefined && s.target !== undefined && (
+                <Card title="Centrage sur la cible (Taguchi)" subtitle="Toute pièce éloignée de la cible coûte, même dans la tolérance">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Stat label="Cpm" value={fmtFixed(cpm(values, s.lsl, s.usl, s.target), 2)} sub="IT / 6√(σ² + (x̄ − cible)²)" />
+                    <Stat label="Écart moyenne − cible" value={`${fmtFixed(r.mean - s.target, 4)} ${c.unit}`} />
+                    <Field label="Coût d'une pièce à la limite"><NumberInput value={lossCost} min={0} step={1} suffix="€" onChange={setLossCost} /></Field>
+                    <Stat label="Perte moyenne par pièce" value={eur(taguchiLoss(values, s.target, (s.usl - s.lsl) / 2, lossCost), 2)} sub="k·(σ² + écart²), k = coût / (IT/2)²" />
+                  </div>
+                </Card>
+              )}
+              {!ad.normal && <BoxCoxCard values={values} lsl={s.lsl} usl={s.usl} />}
               <Card title="Interprétation automatique">
                 <ul className="space-y-2 text-sm">
-                  {interpretCapability(r, s).map((m) => (
+                  {interpretCapability(r, s)
+                    .map((m) => (conv === 'fr' ? m.replace(/\bPpk\b/g, '§PPK').replace(/\bPp\b/g, '§PP').replace(/\bCpk\b/g, 'Cmk').replace(/\bCp\b/g, 'Cm').replace(/§PPK/g, 'Cpk').replace(/§PP/g, 'Cp') : m))
+                    .map((m) => (
                     <li key={m} className="flex gap-2">
                       <span className="text-brand-600">•</span>
                       {m}
@@ -153,15 +222,37 @@ export default function CapabilityPage() {
   )
 }
 
-function IndexTile({ name, v, tone, desc }: { name: string; v?: number; tone?: 'good' | 'warning' | 'critical'; desc: string }) {
+function IndexTile({ name, v, tone, desc, label }: { name: string; v?: number; tone?: 'good' | 'warning' | 'critical'; desc: string; label?: string }) {
   return (
     <div className="rounded-lg bg-black/[.03] px-3 py-2 dark:bg-white/[.05]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold">{name}</span>
-        {tone && v !== undefined && <Badge tone={tone}>{verdict(v)}</Badge>}
+        {tone && v !== undefined && <Badge tone={tone}>{label ?? verdict(v)}</Badge>}
       </div>
       <div className="text-xl font-semibold tabular">{v === undefined ? '—' : fmtFixed(v, 2)}</div>
       <div className="text-[10px] text-[var(--muted)]">{desc}</div>
     </div>
+  )
+}
+
+/** Données non normales : transformation de Box-Cox puis capabilité sur données transformées. */
+function BoxCoxCard({ values, lsl, usl }: { values: number[]; lsl?: number; usl?: number }) {
+  if (values.some((v) => !(v > 0)))
+    return <Note tone="warning" title="Données non normales">Box-Cox impossible (valeurs nulles ou négatives) : se fier aux PPM observés, ou rechercher un mélange de populations (deux machines, deux lots…).</Note>
+  const bc = findBoxCoxLambda(values)
+  const t = values.map((v) => boxCox(v, bc.rounded))
+  const ts = transformSpec(lsl, usl, bc.rounded)
+  const r = capability(t, ts, 1)
+  const ad = andersonDarling(t)
+  return (
+    <Card title="Données non normales : transformation de Box-Cox" subtitle="Cours MMI2 : transformer les données (et les tolérances) pour retrouver une loi normale">
+      <div className="grid gap-3 md:grid-cols-4">
+        <Stat label="λ optimal" value={fmtFixed(bc.lambda, 3)} sub={`retenu : ${bc.rounded} (${bc.label})`} />
+        <Stat label="Normalité après transformation" value={ad.normal ? 'acceptée' : 'toujours rejetée'} sub={`p = ${fmtFixed(ad.pValue, 3)}`} />
+        <Stat label="Ppk (données transformées)" value={fmtFixed(r.ppk, 2)} />
+        <Stat label="PPM attendus (transformées)" value={fmt(r.ppmOverall, 0)} />
+      </div>
+      <p className="mt-2 text-xs text-[var(--muted)]">{ad.normal ? 'La transformation rend les données compatibles avec la loi normale : les indices ci-dessus sont plus fiables que ceux calculés sur les données brutes.' : 'Même transformées, les données ne sont pas normales : utiliser les PPM observés et chercher la cause (mélange de populations, troncature par un tri…).'}</p>
+    </Card>
   )
 }

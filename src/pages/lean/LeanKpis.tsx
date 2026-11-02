@@ -24,12 +24,14 @@ export default function LeanKpis() {
     ['Lead Time observé', duration(k.leadTimeObserved * 1), 'Moyenne (sortie − lancement) des pièces lancées et terminées le jour même', 'Biaisé vers le bas si les pièces lentes ne sortent pas le jour même'],
     ['Throughput', `${fmt(k.throughputPerHour, 1)} pcs/h`, 'Pièces bonnes / heures planifiées', `${k.good} pièces bonnes`],
     ['Work In Progress', `${fmt(k.wipAvg, 1)} pcs`, 'Moyenne temporelle des pièces dans la ligne', `Fin de journée : ${k.wipEnd} pcs`],
-    ['TRS / OEE', pct(k.oee), 'Disponibilité × Performance × Qualité (goulot)', k.oee >= 0.85 ? 'World class' : k.oee >= 0.65 ? 'Acceptable' : 'Faible'],
+    ['TRS / OEE', pct(k.oee), 'Temps utile / temps requis = Disponibilité × Performance × Qualité (goulot)', k.oee >= 0.85 ? 'World class' : k.oee >= 0.65 ? 'Acceptable' : 'Faible'],
+    ['TRG', pct(k.trg), 'Temps utile / temps d\'ouverture (pauses et arrêts planifiés compris)', 'Toujours ≤ TRS : mesure l\'utilisation globale du temps d\'ouverture'],
     ['Productivité', `${fmt(k.productivity, 2)} pcs/h·op`, 'Pièces bonnes / (opérateurs × heures d\'ouverture)', `${k.operators} opérateurs`],
     ['Taux de rendement (yield)', pct(k.yield, 2), 'Pièces bonnes / pièces sorties', `RTY = Π qualités postes = ${pct(k.rty, 1)}`],
     ['Temps à valeur ajoutée', `${fmt(k.vaTime, 0)} s`, 'Σ CT des opérations à valeur ajoutée', 'Ce que le client paie'],
     ['Temps sans valeur ajoutée', duration(k.nvaTime), 'Lead Time − temps VA', 'Attentes, transports, contrôles…'],
     ['Process Cycle Efficiency', pct(k.pce, 2), 'Temps VA / Lead Time', k.pce < 0.05 ? 'Typique d\'un flux poussé (< 5 %)' : 'Flux performant'],
+    ['Ratio de tension de flux (RTF)', pct(k.rtf, 2), 'Σ VA / (Σ VA + Takt × Σ en-cours)', 'Part de valeur ajoutée dans le flux (analyse rouge / vert)'],
   ]
 
   return (
@@ -121,6 +123,22 @@ export default function LeanKpis() {
           )}
         </Card>
       </div>
+      <Card title="Théorie des contraintes (TOC) appliquée à votre ligne" subtitle="Les 5 étapes de focalisation de Goldratt : une heure perdue au goulot est une heure perdue pour tout le système" className="mt-4">
+        <ol className="grid gap-3 text-sm md:grid-cols-5">
+          {[
+            ['Identifier', `La contrainte est « ${r.stations[r.bottleneckIndex].name} » (actif ${pct(r.stations[r.bottleneckIndex].activeRatio, 0)} du temps).`],
+            ['Exploiter', `Ne jamais l'arrêter : TRS du goulot ${pct(r.stations[r.bottleneckIndex].oee.oee, 0)} — réduire pannes (TPM), changements de série (SMED) et rebuts en amont de lui.`],
+            ['Subordonner', 'Caler le reste du flux sur son rythme : tampon de protection devant le goulot, lancement au rythme du goulot (Drum-Buffer-Rope / kanban).'],
+            ['Élever', 'Si ce n\'est pas suffisant : augmenter sa capacité (machine supplémentaire, rééquilibrage, heures supplémentaires sur ce poste seulement).'],
+            ['Recommencer', 'Une fois levée, la contrainte se déplace : refaire l\'analyse (Plan d\'amélioration).'],
+          ].map(([t, d], i) => (
+            <li key={t} className="rounded-lg bg-black/[.03] p-3 dark:bg-white/[.05]">
+              <div className="font-semibold">{i + 1}. {t}</div>
+              <p className="mt-1 text-xs text-[var(--text-secondary)]">{d}</p>
+            </li>
+          ))}
+        </ol>
+      </Card>
       <div className="mt-4">
         <Note title="Économie de la journée">
           Marge : <b>{eur(k.costs.margin)}</b> · coût de possession des encours : {eur(k.costs.holding)} · pénalités de retard : {eur(k.costs.latePenalty)} · coût de revient d'une pièce bonne : {eur(k.costs.costPerGoodPart, 2)}.

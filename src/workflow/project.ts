@@ -83,3 +83,26 @@ export function emptyProject(id: string, name: string, scenarioId: string, metho
     gateChecks: {},
   }
 }
+
+export interface PathItem {
+  phase: Phase
+  step: Step
+  tool: StepTool
+  key: string
+}
+
+/** Parcours ordonné des outils d'une phase pour ce projet (complet ou allégé). */
+export function pathOf(p: DmaicProject, phaseId: PhaseId): PathItem[] {
+  const phase = PHASES.find((x) => x.id === phaseId)!
+  return stepsFor(phase, isLight(p)).flatMap((s) => s.tools.map((t) => ({ phase, step: s, tool: t, key: doneKey(s, t) })))
+}
+
+/** Prochain outil à faire : d'abord dans la phase en cours, puis dans les suivantes. */
+export function nextTarget(p: DmaicProject): PathItem | undefined {
+  const start = PHASES.findIndex((x) => x.id === p.phase)
+  for (const ph of PHASES.slice(start)) {
+    const it = pathOf(p, ph.id).find((x) => !p.done?.[x.key])
+    if (it) return it
+  }
+  return undefined
+}

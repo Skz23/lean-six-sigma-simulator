@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck, Plus } from 'lucide-react'
@@ -9,7 +9,7 @@ import { ProjectExports } from '../components/ProjectExports'
 import { PhaseIcon, PhaseStrip, ProgressBar, ToolCard } from '../components/PhaseNav'
 import { PHASES, phaseById, rememberPhase, toolById } from '../workflow/phases'
 import { PHASE_LESSONS } from '../workflow/lessons'
-import { METHOD_LABEL, doneKey, isLight, phaseProgress, stepsFor } from '../workflow/project'
+import { METHOD_LABEL, doneKey, isLight, pathOf, phaseProgress, stepsFor } from '../workflow/project'
 
 export default function PhasePage() {
   const { phase: pid } = useParams()
@@ -47,8 +47,17 @@ export default function PhasePage() {
       x.gates[phase.id] = true
       if (next) x.phase = next.id
     })
-    nav(next ? `/dmaic/${next.id}` : '/reports')
+    if (!next) return nav('/projets/synthese')
+    // On enchaîne directement sur le premier outil à faire de la phase suivante
+    const first = proj && pathOf({ ...proj, phase: next.id }, next.id).find((x) => !proj.done?.[x.key])
+    rememberPhase(next.id)
+    nav(first ? toolById(first.tool.id)!.to : `/dmaic/${next.id}`)
   }
+  const [params] = useSearchParams()
+  const review = params.get('revue') === '1'
+  useEffect(() => {
+    if (review) setTimeout(() => document.getElementById('revue')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150)
+  }, [review, phase.id])
   const workHere = () => set((x) => (x.phase = phase.id))
 
   return (
@@ -193,7 +202,8 @@ export default function PhasePage() {
             </div>
           )}
         </Card>
-        <Card title={<span className="flex items-center gap-2"><CheckCircle2 size={15} /> Revue de fin de phase (tollgate)</span>} subtitle="Cochez quand c'est vrai pour votre projet">
+        <div id="revue" className={clsx('rounded-xl', review && 'ring-2 ring-brand-500 ring-offset-2 ring-offset-[var(--page)]')}>
+        <Card title={<span className="flex items-center gap-2"><CheckCircle2 size={15} /> Revue de fin de phase (tollgate)</span>} subtitle={review ? 'Tous les outils de la phase sont passés : vérifiez chaque point avant de passer à la suite' : 'Cochez quand c\'est vrai pour votre projet'}>
           <ul className="space-y-1.5 text-sm">
             {phase.gate.map((d, i) => (
               <li key={d}>
@@ -213,12 +223,13 @@ export default function PhasePage() {
               {gateOk ? <Badge tone="good"><CheckCircle2 size={11} /> Revue validée</Badge> : <Badge>{checks.filter(Boolean).length} / {checks.length}</Badge>}
               {gateOk && proj.phase === phase.id && (
                 <Button size="sm" variant="primary" onClick={passNext}>
-                  {next ? <>Passer à {next.n} · {next.label}</> : 'Clôturer : rapport'} <ArrowRight size={13} />
+                  {next ? <>Passer à {next.n} · {next.label}</> : 'Clôturer : synthèse du projet'} <ArrowRight size={13} />
                 </Button>
               )}
             </div>
           )}
         </Card>
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap justify-between gap-2">

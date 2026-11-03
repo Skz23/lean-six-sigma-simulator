@@ -1,11 +1,12 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { Home, FolderOpen, Database, FolderKanban, FileText, Wrench, BookMarked, BookOpen, Moon, Sun, Menu, X, ChevronRight } from 'lucide-react'
+import { Home, FolderOpen, ClipboardList, Database, FolderKanban, FileText, Wrench, BookMarked, BookOpen, Moon, Sun, Menu, X, ChevronRight } from 'lucide-react'
 import { useCurrentProject, useStore } from '../store/useStore'
 import { PHASES, lastPhase, rememberPhase, stepsOf, toolsAt } from '../workflow/phases'
 import { PhaseIcon } from './PhaseNav'
 import { Welcome } from './Welcome'
+import { StepBar } from './StepBar'
 import { LessonBox } from './LessonBox'
 
 interface NavItem {
@@ -17,6 +18,7 @@ interface NavItem {
 const TOP: NavItem[] = [
   { label: 'Accueil', icon: <Home size={17} />, to: '/' },
   { label: 'Mes projets', icon: <FolderOpen size={17} />, to: '/projets' },
+  { label: 'Synthèse du projet', icon: <ClipboardList size={17} />, to: '/projets/synthese' },
   { label: 'Mes données', icon: <Database size={17} />, to: '/data' },
 ]
 const RESULTS: NavItem[] = [
@@ -256,6 +258,7 @@ export default function Layout() {
             <ToolContext />
             <Outlet />
           </div>
+          <StepBar />
         </main>
       </div>
     </div>

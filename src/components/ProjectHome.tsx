@@ -4,7 +4,7 @@ import { useCurrentProject } from '../store/useStore'
 import { Badge, Button, Card } from './ui'
 import { PhaseStrip, ProgressBar } from './PhaseNav'
 import { phaseById, rememberPhase, toolById } from '../workflow/phases'
-import { METHOD_LABEL, isLight, keyResults, nextTodo, projectProgress } from '../workflow/project'
+import { METHOD_LABEL, isLight, keyResults, nextTarget, nextTodo, projectProgress } from '../workflow/project'
 
 /** Bloc « projet en cours » de l'accueil : avancement, prochaines actions, résultats retenus. */
 export function ProjectHome() {
@@ -21,6 +21,7 @@ export function ProjectHome() {
   const ph = phaseById(p.phase)!
   const prog = projectProgress(p)
   const todo = nextTodo(p, 3)
+  const next = nextTarget(p)
   const results = keyResults(p).slice(-4)
   return (
     <Card className="mb-4" bodyClass="p-4">
@@ -34,9 +35,12 @@ export function ProjectHome() {
             <span className="text-xs text-[var(--text-secondary)]">{prog.done} / {prog.total} outils faits</span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link to="/projets"><Button size="sm"><FolderOpen size={13} /> Mes projets</Button></Link>
-          <Link to={`/dmaic/${p.phase}`}><Button size="sm" variant="primary">Continuer <ArrowRight size={13} /></Button></Link>
+          <Link to="/projets/synthese"><Button size="sm">Synthèse</Button></Link>
+          <Link to={next ? toolById(next.tool.id)!.to : `/dmaic/${p.phase}`} onClick={() => next && rememberPhase(next.phase.id)}>
+            <Button size="sm" variant="primary">{next ? <>Continuer : {next.tool.role ?? toolById(next.tool.id)!.name}</> : 'Continuer'} <ArrowRight size={13} /></Button>
+          </Link>
         </div>
       </div>
       <ProgressBar ratio={prog.ratio} className="mt-3" />

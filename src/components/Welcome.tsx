@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Factory, FolderOpen, PencilRuler, X } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { demoDmaic } from '../data/demoTools'
-import { phaseById } from '../workflow/phases'
-import { projectProgress } from '../workflow/project'
+import { phaseById, rememberPhase, toolById } from '../workflow/phases'
+import { nextTarget, projectProgress } from '../workflow/project'
 
 const KEY = 'lss-welcome-shown'
 export const DEMO_PROJECT_ID = 'dmaic-1'
@@ -57,7 +57,9 @@ export function Welcome() {
     if (!resume) return
     openProject(resume.id)
     close()
-    nav(`/dmaic/${resume.phase}`)
+    const t = nextTarget(resume)
+    if (t) rememberPhase(t.phase.id)
+    nav(t ? toolById(t.tool.id)!.to : '/projets/synthese')
   }
 
   const Choice = ({ icon, title, text, onClick, primary }: { icon: React.ReactNode; title: string; text: string; onClick: () => void; primary?: boolean }) => (
@@ -91,7 +93,7 @@ export function Welcome() {
               primary
               icon={<FolderOpen size={20} />}
               title={`Reprendre « ${resume.name} »`}
-              text={`Phase ${phaseById(resume.phase)!.n} · ${phaseById(resume.phase)!.label} — ${Math.round(projectProgress(resume).ratio * 100)} % des outils faits.`}
+              text={`Phase ${phaseById(resume.phase)!.n} · ${phaseById(resume.phase)!.label} — ${Math.round(projectProgress(resume).ratio * 100)} % des outils faits.${nextTarget(resume) ? ` Prochain outil : ${nextTarget(resume)!.tool.role ?? toolById(nextTarget(resume)!.tool.id)!.name}.` : ''}`}
               onClick={goOn}
             />
           )}

@@ -32,6 +32,7 @@ const PhasePage = lazy(() => import('./pages/PhasePage'))
 const ToolboxPage = lazy(() => import('./pages/ToolboxPage'))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
 const TestWizardPage = lazy(() => import('./pages/TestWizardPage'))
+const SynthesisPage = lazy(() => import('./pages/SynthesisPage'))
 
 function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="outils" element={<ToolboxPage />} />
             <Route path="analyse/quel-test" element={<TestWizardPage />} />
             <Route path="projets" element={<ProjectsPage />} />
+            <Route path="projets/synthese" element={<SynthesisPage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </Routes>

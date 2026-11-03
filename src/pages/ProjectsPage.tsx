@@ -8,8 +8,8 @@ import { Badge, Button, Card, Field, Input, Note, PageHeader, Select, TextArea }
 import { ProgressBar } from '../components/PhaseNav'
 import { ask } from '../lib/dialog'
 import { blankScenario } from '../data/realScenario'
-import { PHASES } from '../workflow/phases'
-import { METHOD_LABEL, emptyProject, isLight, phaseProgress, projectProgress } from '../workflow/project'
+import { PHASES, rememberPhase, toolById } from '../workflow/phases'
+import { METHOD_LABEL, emptyProject, isLight, nextTarget, phaseProgress, projectProgress } from '../workflow/project'
 
 const BLANK = '__blank'
 
@@ -115,7 +115,9 @@ function ProjectCard({ p, current }: { p: DmaicProject; current: boolean }) {
 
   const open = () => {
     openProject(p.id)
-    nav(`/dmaic/${p.phase}`)
+    const t = nextTarget(p)
+    if (t) rememberPhase(t.phase.id)
+    nav(t ? toolById(t.tool.id)!.to : '/projets/synthese')
   }
   const duplicate = () => {
     const name = `${p.name} (copie)`
@@ -165,6 +167,7 @@ function ProjectCard({ p, current }: { p: DmaicProject; current: boolean }) {
       </p>
       <div className="mt-3 flex flex-wrap gap-2 pt-1">
         <Button variant="primary" size="sm" onClick={open}><FolderOpen size={13} /> Continuer</Button>
+        <Button size="sm" onClick={() => { openProject(p.id); nav('/projets/synthese') }}>Synthèse</Button>
         <Button size="sm" onClick={() => { openProject(p.id); nav('/sixsigma/dmaic') }}>Espace projet</Button>
         <Button size="sm" variant="ghost" onClick={duplicate} title="Dupliquer"><Copy size={13} /></Button>
         <Button size="sm" variant="ghost" onClick={remove} title="Supprimer"><Trash2 size={13} /></Button>

@@ -39,3 +39,16 @@ describe('suivi de projet', () => {
     expect(keyResults(p).map((r) => r.value)).toEqual(['Rebuts 6 %', '%R&R = 14 %'])
   })
 })
+
+describe('enchaînement des outils', () => {
+  it('le prochain outil suit le parcours, puis passe à la phase suivante', async () => {
+    const { pathOf, nextTarget } = await import('./project')
+    const p = emptyProject('p', 'T', 'sc', 'dmaic')
+    const def = pathOf(p, 'define')
+    expect(nextTarget(p)!.key).toBe(def[0].key)
+    p.done = Object.fromEntries(def.map((x) => [x.key, true]))
+    expect(nextTarget(p)!.phase.id).toBe('measure')
+    const light = emptyProject('l', 'L', 'sc', 'kaizen')
+    expect(pathOf(light, 'analyze').length).toBeLessThan(pathOf(p, 'analyze').length)
+  })
+})

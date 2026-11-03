@@ -61,6 +61,12 @@ export function workspaceOf(st: { tools: ToolsState; currentProjectId?: string }
 
 export const uid = (p = 'id') => `${p}-${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-3)}`
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
+/** Copie d'un scénario pour l'historique des versions, sans l'image du plan d'atelier (trop lourde à dupliquer). */
+const snapshot = (s: Scenario): Scenario => {
+  const c = clone(s)
+  if (c.floorPlan) c.floorPlan = { ...c.floorPlan, image: '' }
+  return c
+}
 
 function initial() {
   const sc = demoScenarios()
@@ -126,7 +132,7 @@ export const useStore = create<State>()(
           let versions = st.versions
           if (versionLabel) {
             const prev = st.scenarios.find((s) => s.id === id)!
-            const list = [{ id: uid('v'), at: new Date().toISOString(), label: versionLabel, scenario: clone(prev) }, ...(st.versions[id] ?? [])].slice(0, 30)
+            const list = [{ id: uid('v'), at: new Date().toISOString(), label: versionLabel, scenario: snapshot(prev) }, ...(st.versions[id] ?? [])].slice(0, 30)
             versions = { ...st.versions, [id]: list }
           }
           return { scenarios, versions }
@@ -158,7 +164,7 @@ export const useStore = create<State>()(
         set((st) => {
           const s = st.scenarios.find((x) => x.id === id)
           if (!s) return st
-          const list = [{ id: uid('v'), at: new Date().toISOString(), label, scenario: clone(s) }, ...(st.versions[id] ?? [])].slice(0, 30)
+          const list = [{ id: uid('v'), at: new Date().toISOString(), label, scenario: snapshot(s) }, ...(st.versions[id] ?? [])].slice(0, 30)
           return { versions: { ...st.versions, [id]: list } }
         }),
       restoreVersion: (id, versionId) =>
@@ -166,9 +172,18 @@ export const useStore = create<State>()(
           const v = st.versions[id]?.find((x) => x.id === versionId)
           if (!v) return st
           const current = st.scenarios.find((x) => x.id === id)!
-          const backup = { id: uid('v'), at: new Date().toISOString(), label: 'Avant restauration', scenario: clone(current) }
+          const backup = { id: uid('v'), at: new Date().toISOString(), label: 'Avant restauration', scenario: snapshot(current) }
           return {
-            scenarios: st.scenarios.map((s) => (s.id === id ? { ...clone(v.scenario), id, updatedAt: new Date().toISOString() } : s)),
+            scenarios: st.scenarios.map((s) => {
+              if (s.id !== id) return s
+              const r: Scenario = { ...clone(v.scenario), id, updatedAt: new Date().toISOString() }
+              // l'image du plan n'est pas dans les versions : on garde celle du scénario actuel
+              if (r.floorPlan && !r.floorPlan.image) {
+                if (current.floorPlan?.image) r.floorPlan.image = current.floorPlan.image
+                else delete r.floorPlan
+              }
+              return r
+            }),
             versions: { ...st.versions, [id]: [backup, ...st.versions[id]].slice(0, 30) },
           }
         }),

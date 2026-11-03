@@ -120,6 +120,8 @@ export interface OperatorRoute {
   purpose: string
   /** Le déplacement apporte-t-il de la valeur (approvisionnement nécessaire) ? */
   necessary: boolean
+  /** Trajet réellement observé, tracé sur le plan (m) ; à défaut, distance rectilinéaire entre les deux points. */
+  path?: { x: number; y: number }[]
 }
 
 export interface ImprovementAction {
@@ -165,6 +167,8 @@ export interface Scenario {
   warmup: boolean
   layoutPoints: LayoutPoint[]
   operatorRoutes: OperatorRoute[]
+  /** Plan de l'atelier en fond du diagramme spaghetti (image compressée) et ses dimensions réelles. */
+  floorPlan?: { image: string; widthM: number; heightM: number; opacity?: number }
   actions: ImprovementAction[]
 }
 

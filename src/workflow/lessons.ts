@@ -134,7 +134,7 @@ export const LESSONS: Record<string, Lesson> = {
   },
   spaghetti: {
     why: 'Visualiser les déplacements des personnes ou des pièces pour réduire les distances parcourues.',
-    how: ['Tracer chaque trajet sur le plan de l\'atelier', 'Mesurer les distances journalières', 'Tester une autre implantation et comparer'],
+    how: ['Importer le plan de l\'atelier (photo, scan, ou dessin draw.io exporté en PNG) et indiquer sa largeur réelle', 'Placer les postes et les points de passage (magasin, outillage, métrologie)', 'Suivre un opérateur et tracer à la souris chaque trajet observé, avec sa fréquence', 'Lire les distances journalières, puis glisser les postes pour tester une autre implantation'],
     tips: ['Un tracé très enchevêtré révèle une implantation par fonction plutôt que par flux'],
   },
   ideas: {

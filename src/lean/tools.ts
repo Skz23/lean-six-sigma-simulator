@@ -134,6 +134,13 @@ export function allPoints(sc: Scenario): Point[] {
   return [...sc.stations.map((s) => ({ id: s.id, name: s.name, x: s.x, y: s.y })), ...sc.layoutPoints.map((p: LayoutPoint) => ({ ...p }))]
 }
 
+/** Longueur d'un trajet tracé (somme des segments, m). */
+export function pathLength(path: { x: number; y: number }[]): number {
+  let d = 0
+  for (let i = 1; i < path.length; i++) d += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y)
+  return d
+}
+
 /** Distance rectilinéaire (allées orthogonales d'atelier). */
 export function manhattan(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
@@ -145,7 +152,7 @@ export function spaghettiAnalysis(sc: Scenario) {
   const routes = sc.operatorRoutes.map((r: OperatorRoute) => {
     const a = find(r.from)
     const b = find(r.to)
-    const d = a && b ? manhattan(a, b) : 0
+    const d = r.path && r.path.length >= 2 ? pathLength(r.path) : a && b ? manhattan(a, b) : 0
     // aller-retour
     const daily = d * 2 * r.tripsPerShift
     return { ...r, distance: d, daily, timeMin: daily / 1.1 / 60 }

@@ -1,38 +1,58 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useEffect } from 'react'
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck } from 'lucide-react'
-import { useStore } from '../store/useStore'
-import { Badge, Button, Card, Select } from '../components/ui'
-import { PhaseIcon, PhaseStrip, ToolCard } from '../components/PhaseNav'
+import { useEffect, useState } from 'react'
+import clsx from 'clsx'
+import { ArrowLeft, ArrowRight, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck, Plus } from 'lucide-react'
+import { useCurrentProject, useStore } from '../store/useStore'
+import type { DmaicProject } from '../store/types'
+import { Badge, Button, Card, Note } from '../components/ui'
+import { PhaseIcon, PhaseStrip, ProgressBar, ToolCard } from '../components/PhaseNav'
 import { PHASES, phaseById, rememberPhase, toolById } from '../workflow/phases'
-import { useState } from 'react'
+import { METHOD_LABEL, doneKey, isLight, phaseProgress, stepsFor } from '../workflow/project'
 
 export default function PhasePage() {
   const { phase: pid } = useParams()
   const phase = phaseById(pid) ?? PHASES[0]
-  const projects = useStore((s) => s.tools.dmaic)
+  const proj = useCurrentProject()
   const setTools = useStore((s) => s.setTools)
   const nav = useNavigate()
-  const [projId, setProjId] = useState(projects[0]?.id)
-  const proj = projects.find((p) => p.id === projId) ?? projects[0]
+  const [showAll, setShowAll] = useState(false)
   const prev = PHASES[phase.n - 2]
   const next = PHASES[phase.n]
 
   useEffect(() => rememberPhase(phase.id), [phase.id])
 
-  const openProject = () => {
-    if (!proj) return nav('/sixsigma/dmaic')
+  const set = (fn: (p: DmaicProject) => void) =>
+    proj &&
     setTools((t) => {
       const x = t.dmaic.find((y) => y.id === proj.id)
-      if (x) x.phase = phase.id
+      if (x) fn(x)
     })
-    nav(`/sixsigma/dmaic?project=${proj.id}`)
+  const light = !!proj && isLight(proj) && !showAll
+  const steps = stepsFor(phase, light)
+  const hidden = phase.steps.reduce((n, s) => n + s.tools.length, 0) - steps.reduce((n, s) => n + s.tools.length, 0)
+  const prog = proj ? phaseProgress(proj, phase.id) : undefined
+  const checks = phase.gate.map((_, i) => !!proj?.gateChecks?.[phase.id]?.[i])
+  const gateOk = checks.every(Boolean)
+  const toggleGate = (i: number) =>
+    set((x) => {
+      const g = (x.gateChecks ??= {})
+      const arr = (g[phase.id] ??= phase.gate.map(() => false))
+      arr[i] = !arr[i]
+      x.gates[phase.id] = phase.gate.every((_, j) => arr[j])
+    })
+  const passNext = () => {
+    set((x) => {
+      x.gates[phase.id] = true
+      if (next) x.phase = next.id
+    })
+    nav(next ? `/dmaic/${next.id}` : '/reports')
   }
+  const workHere = () => set((x) => (x.phase = phase.id))
 
   return (
     <div>
       <div className="mb-4">
-        <PhaseStrip current={phase.id} />
+        <PhaseStrip current={phase.id} gates={proj?.gates} ongoing={proj?.phase} />
       </div>
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-600 text-white">
@@ -59,43 +79,56 @@ export default function PhasePage() {
             ))}
           </ul>
         </Card>
-        <Card title="Mon projet" subtitle="Charte, causes, solutions et revue de phase sont saisies dans l'espace projet" className="lg:col-span-5">
+        <Card title="Projet en cours" className="lg:col-span-5">
           {proj ? (
             <div className="space-y-3">
-              {projects.length > 1 && (
-                <Select value={proj.id} onChange={(e) => setProjId(e.target.value)}>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </Select>
-              )}
-              <div className="text-sm font-medium">{proj.name}</div>
-              <div className="flex flex-wrap gap-1">
-                {PHASES.map((p) => (
-                  <Badge key={p.id} tone={proj.gates[p.id] ? 'good' : p.id === proj.phase ? 'brand' : 'neutral'}>
-                    {proj.gates[p.id] ? <CheckCircle2 size={11} /> : <Circle size={11} />} {p.n} {p.label}
-                  </Badge>
-                ))}
+              <div>
+                <div className="font-medium">{proj.name}</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Badge tone={isLight(proj) ? 'warning' : 'info'}>{METHOD_LABEL[proj.method ?? 'dmaic']}</Badge>
+                  {proj.phase === phase.id ? <Badge tone="brand">phase en cours du projet</Badge> : <Badge>phase en cours : {phaseById(proj.phase)!.n} · {phaseById(proj.phase)!.label}</Badge>}
+                </div>
               </div>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Revue de la phase {phase.label} : <b>{proj.gates[phase.id] ? 'validée' : 'non validée'}</b>
-              </p>
-              <Button variant="primary" onClick={openProject}>
-                <FolderOpen size={15} /> Ouvrir la phase dans le projet
-              </Button>
+              {prog && (
+                <div>
+                  <div className="mb-1 flex justify-between text-xs text-[var(--text-secondary)]">
+                    <span>Outils faits dans cette phase</span>
+                    <span>{prog.done} / {prog.total}</span>
+                  </div>
+                  <ProgressBar ratio={prog.ratio} />
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {proj.phase !== phase.id && <Button size="sm" onClick={workHere}>Faire de cette phase la phase en cours</Button>}
+                <Button size="sm" onClick={() => nav(`/sixsigma/dmaic?phase=${phase.id}`)}>
+                  <FolderOpen size={13} /> Espace projet (notes, charte…)
+                </Button>
+                <Link to="/projets" className="self-center text-xs text-brand-600 underline dark:text-brand-300">Changer de projet</Link>
+              </div>
             </div>
           ) : (
-            <Button variant="primary" onClick={() => nav('/sixsigma/dmaic')}>
-              <FolderOpen size={15} /> Créer un projet
-            </Button>
+            <div className="space-y-2">
+              <p className="text-sm text-[var(--text-secondary)]">Créez un projet pour suivre votre avancement outil par outil.</p>
+              <Button variant="primary" onClick={() => nav('/projets?new=1')}><Plus size={15} /> Nouveau projet</Button>
+            </div>
           )}
         </Card>
       </div>
 
       <h2 className="mt-6 mb-1 text-base font-semibold">Le chemin de la phase</h2>
-      <p className="mb-3 text-sm text-[var(--text-secondary)]">Suivez les sous-étapes dans l'ordre. Chacune utilise un ou plusieurs outils.</p>
+      <p className="mb-3 text-sm text-[var(--text-secondary)]">
+        Suivez les sous-étapes dans l'ordre. Ouvrez l'outil, puis cochez « Fait » et notez le résultat à retenir : il alimente l'accueil et le rapport du projet.
+      </p>
+      {proj && isLight(proj) && (
+        <div className="mb-3">
+          <Note tone="tip">
+            {METHOD_LABEL[proj.method ?? 'dmaic']} : {showAll ? 'tous les outils sont affichés.' : `seuls les outils essentiels sont affichés (${hidden} masqués).`}{' '}
+            <button className="text-brand-600 underline" onClick={() => setShowAll((v) => !v)}>{showAll ? 'Revenir à l\'essentiel' : 'Afficher tous les outils'}</button>
+          </Note>
+        </div>
+      )}
       <ol className="space-y-4">
-        {phase.steps.map((st) => (
+        {steps.map((st) => (
           <li key={st.n} className="relative rounded-xl border border-black/[.08] bg-black/[.015] p-3.5 dark:border-white/10 dark:bg-white/[.02]">
             <div className="mb-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
               <span className="rounded-md bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">{st.n}</span>
@@ -105,7 +138,33 @@ export default function PhasePage() {
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {st.tools.map((x) => {
                 const t = toolById(x.id)!
-                return <ToolCard key={x.id} t={t} phase={phase.id} role={x.role} />
+                const k = doneKey(st, x)
+                const done = !!proj?.done?.[k]
+                return (
+                  <ToolCard
+                    key={x.id}
+                    t={t}
+                    phase={phase.id}
+                    role={x.role}
+                    done={done}
+                    footer={
+                      proj && (
+                        <div className="flex items-center gap-2">
+                          <label className={clsx('flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium', done ? 'text-[var(--good-text)]' : 'text-[var(--text-secondary)]')}>
+                            <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={done} onChange={() => set((p) => ((p.done ??= {})[k] = !done))} />
+                            Fait
+                          </label>
+                          <input
+                            className="h-7 min-w-0 flex-1 rounded-md border border-black/10 bg-transparent px-2 text-xs dark:border-white/15"
+                            placeholder="Résultat à retenir…"
+                            value={proj.results?.[k] ?? ''}
+                            onChange={(e) => set((p) => ((p.results ??= {})[k] = e.target.value))}
+                          />
+                        </div>
+                      )
+                    }
+                  />
+                )
               })}
             </div>
           </li>
@@ -118,10 +177,31 @@ export default function PhasePage() {
             {phase.deliverables.map((d) => <li key={d}>{d}</li>)}
           </ul>
         </Card>
-        <Card title={<span className="flex items-center gap-2"><CheckCircle2 size={15} /> Revue de fin de phase (tollgate)</span>} subtitle="Pour passer à la phase suivante">
-          <ul className="list-disc space-y-1 pl-5 text-sm">
-            {phase.gate.map((d) => <li key={d}>{d}</li>)}
+        <Card title={<span className="flex items-center gap-2"><CheckCircle2 size={15} /> Revue de fin de phase (tollgate)</span>} subtitle="Cochez quand c'est vrai pour votre projet">
+          <ul className="space-y-1.5 text-sm">
+            {phase.gate.map((d, i) => (
+              <li key={d}>
+                <label className={clsx('flex items-start gap-2', proj && 'cursor-pointer')}>
+                  {proj ? (
+                    <input type="checkbox" className="mt-1 accent-[var(--color-brand-600)]" checked={checks[i]} onChange={() => toggleGate(i)} />
+                  ) : (
+                    <Circle size={14} className="mt-1 shrink-0 text-[var(--muted)]" />
+                  )}
+                  <span className={clsx(checks[i] && 'text-[var(--text-secondary)]')}>{d}</span>
+                </label>
+              </li>
+            ))}
           </ul>
+          {proj && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {gateOk ? <Badge tone="good"><CheckCircle2 size={11} /> Revue validée</Badge> : <Badge>{checks.filter(Boolean).length} / {checks.length}</Badge>}
+              {gateOk && proj.phase === phase.id && (
+                <Button size="sm" variant="primary" onClick={passNext}>
+                  {next ? <>Passer à {next.n} · {next.label}</> : 'Clôturer : rapport'} <ArrowRight size={13} />
+                </Button>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 

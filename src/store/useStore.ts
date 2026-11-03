@@ -28,6 +28,9 @@ interface State {
   baselineId: string
   comparisonId: string
   datasets: Dataset[]
+  /** projet en cours (sélectionné partout) */
+  currentProjectId?: string
+  openProject: (id: string) => void
   addDataset: (d: Dataset) => void
   updateDataset: (id: string, fn: (d: Dataset) => void) => void
   deleteDataset: (id: string) => void
@@ -81,6 +84,13 @@ export const useStore = create<State>()(
         })),
       deleteDataset: (id) => set((st) => ({ datasets: st.datasets.filter((d) => d.id !== id) })),
       setActive: (id) => set({ activeId: id }),
+      openProject: (id) =>
+        set((st) => {
+          const p = st.tools.dmaic.find((x) => x.id === id)
+          if (!p) return st
+          const sc = st.scenarios.some((x) => x.id === p.scenarioId) ? p.scenarioId : st.activeId
+          return { currentProjectId: id, activeId: sc }
+        }),
       updateScenario: (id, fn, versionLabel) =>
         set((st) => {
           const scenarios = st.scenarios.map((s) => {
@@ -149,7 +159,7 @@ export const useStore = create<State>()(
       setWidgets: (w) => set({ widgets: w }),
       setBaseline: (id) => set({ baselineId: id }),
       setComparison: (id) => set({ comparisonId: id }),
-      resetDemo: () => set({ ...initial() }),
+      resetDemo: () => set({ ...initial(), currentProjectId: undefined }),
       importAll: (data) => set((st) => ({ ...st, ...data })),
     }),
     {
@@ -185,4 +195,11 @@ export const useStore = create<State>()(
 
 export function useActiveScenario(): Scenario {
   return useStore((s) => s.scenarios.find((x) => x.id === s.activeId) ?? s.scenarios[0])
+}
+
+/** Projet en cours (le premier à défaut). */
+export function useCurrentProject() {
+  const projects = useStore((s) => s.tools.dmaic)
+  const id = useStore((s) => s.currentProjectId)
+  return projects.find((p) => p.id === id) ?? projects[0]
 }

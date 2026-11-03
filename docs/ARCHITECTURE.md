@@ -63,3 +63,7 @@ Scenario (configuration) ──► LineSimulation ──► SimResults (pièces,
 ## Démarche DMAIC (navigation)
 
 `src/workflow/phases.ts` est la source unique de l'organisation par démarche : les 5 phases (objectif, questions, livrables, revue de fin de phase, équivalent MARP) et le catalogue des outils (adresse, famille, phases où ils servent, outils incontournables). Le menu, les pages de phase (`/dmaic/:phase`), la boîte à outils (`/outils`), le guide et le fil d'Ariane des outils en sont dérivés. Les onglets des pages multi-outils sont pilotés par l'adresse (`?tab=`, `src/lib/useUrlTab.ts`) pour pouvoir ouvrir un outil directement. Les adresses historiques des outils sont conservées. Un test vérifie que chaque outil du catalogue pointe vers une route et un onglet existants.
+
+## Projets
+
+Un projet (`DmaicProject`, `tools.dmaic`) porte sa démarche (`method` : DMAIC complet ou parcours allégé Kaizen / A3 / 8D), sa phase en cours, les outils faits et les résultats retenus (clé « sous-étape:outil », ex. `2.2:msa`), les cases de revue de fin de phase et ses scénarios. Le projet en cours (`currentProjectId`) est choisi en haut de l'écran ; l'ouvrir active son scénario. Les outils SMED (`tools.smed`, clé scénario:poste), 5S (`tools.fiveS`, clé scénario), Kanban (`tools.kanban`, clé scénario) et spaghetti (positions des postes du scénario) sont rattachés au scénario : un projet créé avec sa propre copie de scénario a donc des données propres. Les calculs d'avancement sont dans `src/workflow/project.ts` (testés).

@@ -1,10 +1,10 @@
 import { ask } from '../../lib/dialog'
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Circle, ClipboardList, Copy, Plus, Trash2 } from 'lucide-react'
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis, Legend } from 'recharts'
-import { useStore, uid } from '../../store/useStore'
+import { useCurrentProject, useStore, uid } from '../../store/useStore'
 import { runScenario } from '../../store/useSimulation'
 import type { DmaicPhase, DmaicProject, SipocRow } from '../../store/types'
 import { Badge, Button, Card, Delta, Field, Input, Kpi, Note, NumberInput, PageHeader, Select, Stat, Table, TextArea } from '../../components/ui'
@@ -17,7 +17,6 @@ import { imrChart, pChart } from '../../stats/spc'
 import { summarize } from '../../stats/descriptive'
 import { replicate } from '../../engine/simulation'
 import { computeKpis } from '../../engine/kpi'
-import { demoDmaic } from '../../data/demoTools'
 import { fmt, fmtFixed, pct, eur } from '../../lib/format'
 
 const PHASES: { id: DmaicPhase; label: string; desc: string }[] = [
@@ -32,11 +31,18 @@ export default function DmaicPage() {
   const projects = useStore((s) => s.tools.dmaic)
   const setTools = useStore((s) => s.setTools)
   const scenarios = useStore((s) => s.scenarios)
-  const activeId = useStore((s) => s.activeId)
   const [params] = useSearchParams()
-  const [sel, setSel] = useState<string | undefined>(() => projects.find((x) => x.id === params.get('project'))?.id ?? projects[0]?.id)
-  const p = projects.find((x) => x.id === sel)
+  const nav = useNavigate()
+  const openProject = useStore((s) => s.openProject)
+  const cur = useCurrentProject()
+  const sel = cur?.id
+  const setSel = (id?: string) => id && openProject(id)
+  const p = cur
+  const wantProject = params.get('project')
   const wantPhase = params.get('phase') as DmaicPhase | null
+  useEffect(() => {
+    if (wantProject && projects.some((x) => x.id === wantProject)) openProject(wantProject)
+  }, [wantProject, projects, openProject])
   useEffect(() => {
     if (wantPhase && PHASES.some((x) => x.id === wantPhase) && sel)
       setTools((t) => {
@@ -50,32 +56,14 @@ export default function DmaicPage() {
       if (x) fn(x)
     })
 
-  const create = () => {
-    const base = demoDmaic(activeId)
-    const np: DmaicProject = {
-      ...base,
-      id: uid('dmaic'),
-      name: 'Nouveau projet DMAIC',
-      phase: 'define',
-      charter: { ...base.charter, problem: '', businessCase: '', goal: '', scope: '', baselineMetric: '', targetMetric: '' },
-      voc: [],
-      sipoc: [],
-      causes: [],
-      whys: [],
-      solutions: [],
-      controlPlan: [],
-      gates: { define: false, measure: false, analyze: false, improve: false, control: false },
-    }
-    setTools((t) => t.dmaic.push(np))
-    setSel(np.id)
-  }
+  const create = () => nav('/projets?new=1')
 
   return (
     <div>
       <PageHeader
         icon={<ClipboardList size={20} />}
-        title="Mes projets"
-        subtitle="Espace projet DMAIC : charte, VOC, SIPOC, causes, solutions, plan de contrôle et revues de phase"
+        title="Espace projet"
+        subtitle="Projet en cours : charte, VOC, SIPOC, causes, solutions, plan de contrôle et revues de phase"
         actions={
           <>
             <Select value={sel} onChange={(e) => setSel(e.target.value)} className="w-80">

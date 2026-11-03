@@ -30,6 +30,7 @@ const MethodPage = lazy(() => import('./pages/MethodPage'))
 const MsaPage = lazy(() => import('./pages/sixsigma/MsaPage'))
 const PhasePage = lazy(() => import('./pages/PhasePage'))
 const ToolboxPage = lazy(() => import('./pages/ToolboxPage'))
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
 
 function Loading() {
   return <div className="py-20 text-center text-sm text-[var(--muted)]">Chargement…</div>
@@ -78,7 +79,7 @@ export default function App() {
             <Route path="dmaic" element={<Navigate to="/dmaic/define" replace />} />
             <Route path="dmaic/:phase" element={<PhasePage />} />
             <Route path="outils" element={<ToolboxPage />} />
-            <Route path="projets" element={<Navigate to="/sixsigma/dmaic" replace />} />
+            <Route path="projets" element={<ProjectsPage />} />
             <Route path="*" element={<Dashboard />} />
           </Route>
         </Routes>

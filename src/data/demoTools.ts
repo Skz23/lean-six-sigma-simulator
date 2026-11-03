@@ -79,6 +79,10 @@ export function demoDmaic(scenarioId: string): DmaicProject {
     ],
     gates: { define: true, measure: false, analyze: false, improve: false, control: false },
     notes: { define: '', measure: '', analyze: '', improve: '', control: '' },
+    method: 'dmaic',
+    done: { '1.1:qqoqcpc': true, '1.1:method': true, '1.2:voc': true, '1.2:kano': true, '1.3:sipoc': true, '1.3:vsm': true, '1.3:line': true, '1.4:charter': true },
+    results: { '1.2:voc': 'CTQ : diamètre de portée Ø25 ± 0,05 mm', '1.3:vsm': 'Lead Time ≈ 3,7 h dont < 1 % de valeur ajoutée', '1.4:charter': 'Objectif : Cpk ≥ 1,33 et rebuts divisés par 3 en 4 mois' },
+    gateChecks: { define: [true, true, true, true] },
   }
 }
 

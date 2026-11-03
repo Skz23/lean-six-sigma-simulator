@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import type { KanbanParams } from '../../store/types'
 import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'recharts'
 import { KanbanSquare } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
@@ -12,9 +12,18 @@ export default function KanbanPage() {
   const sc = useActiveScenario()
   const update = useStore((s) => s.updateScenario)
   const { results, kpis } = useSimulation(sc)
-  const [container, setContainer] = useState(5)
-  const [safety, setSafety] = useState(0.15)
-  const [loopMin, setLoopMin] = useState<number | null>(null)
+  // Paramètres mémorisés par scénario (donc propres au projet qui possède ce scénario)
+  const saved = useStore((s) => s.tools.kanban?.[sc.id])
+  const setTools = useStore((s) => s.setTools)
+  const { container, safety, loopMin } = saved ?? { container: 5, safety: 0.15, loopMin: null }
+  const save = (patch: Partial<KanbanParams>) =>
+    setTools((t) => {
+      const k = (t.kanban ??= {})
+      k[sc.id] = { ...(k[sc.id] ?? { container, safety, loopMin }), ...patch }
+    })
+  const setContainer = (v: number) => save({ container: v })
+  const setSafety = (v: number) => save({ safety: v })
+  const setLoopMin = (v: number | null) => save({ loopMin: v })
   const dayS = availableTime(sc)
 
   // Délai de réapprovisionnement par boucle : temps de cycle effectif du poste fournisseur

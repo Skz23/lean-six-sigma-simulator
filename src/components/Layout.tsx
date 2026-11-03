@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
 import { Home, FolderOpen, Database, FolderKanban, FileText, Wrench, BookMarked, BookOpen, Moon, Sun, Menu, X, ChevronRight } from 'lucide-react'
-import { useStore } from '../store/useStore'
+import { useCurrentProject, useStore } from '../store/useStore'
 import { PHASES, lastPhase, rememberPhase, stepsOf, toolsAt } from '../workflow/phases'
 import { PhaseIcon } from './PhaseNav'
 
@@ -14,7 +14,7 @@ interface NavItem {
 
 const TOP: NavItem[] = [
   { label: 'Accueil', icon: <Home size={17} />, to: '/' },
-  { label: 'Mes projets', icon: <FolderOpen size={17} />, to: '/sixsigma/dmaic' },
+  { label: 'Mes projets', icon: <FolderOpen size={17} />, to: '/projets' },
   { label: 'Mes données', icon: <Database size={17} />, to: '/data' },
 ]
 const RESULTS: NavItem[] = [
@@ -157,17 +157,42 @@ function ToolContext() {
   )
 }
 
+function ProjectPicker() {
+  const projects = useStore((s) => s.tools.dmaic)
+  const cur = useCurrentProject()
+  const openProject = useStore((s) => s.openProject)
+  if (!projects.length) return null
+  return (
+    <label className="flex min-w-0 items-center gap-2 text-sm">
+      <span className="hidden text-[var(--text-secondary)] md:inline">Projet</span>
+      <select
+        value={cur?.id}
+        onChange={(e) => openProject(e.target.value)}
+        className="h-8 max-w-[150px] min-w-0 rounded-lg border border-brand-500/40 bg-brand-500/5 px-2 text-sm font-medium sm:max-w-[240px]"
+        title="Projet en cours"
+      >
+        {projects.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function ScenarioPicker() {
   const scenarios = useStore((s) => s.scenarios)
   const activeId = useStore((s) => s.activeId)
   const setActive = useStore((s) => s.setActive)
   return (
     <label className="flex min-w-0 items-center gap-2 text-sm">
-      <span className="hidden text-[var(--text-secondary)] sm:inline">Scénario actif</span>
+      <span className="hidden text-[var(--text-secondary)] md:inline">Scénario</span>
       <select
         value={activeId}
         onChange={(e) => setActive(e.target.value)}
-        className="h-8 max-w-[220px] min-w-0 rounded-lg border border-black/10 bg-white px-2 text-sm font-medium dark:border-white/15 dark:bg-white/5"
+        className="h-8 max-w-[130px] min-w-0 rounded-lg border border-black/10 bg-white px-2 text-sm font-medium sm:max-w-[220px] dark:border-white/15 dark:bg-white/5"
+        title="Scénario actif"
       >
         {scenarios.map((s) => (
           <option key={s.id} value={s.id}>
@@ -209,6 +234,7 @@ export default function Layout() {
           <button className="rounded-md p-1.5 hover:bg-black/5 lg:hidden dark:hover:bg-white/10" onClick={() => setMobile(true)} aria-label="Menu">
             {mobile ? <X size={18} /> : <Menu size={18} />}
           </button>
+          <ProjectPicker />
           <ScenarioPicker />
           <div className="ml-auto flex items-center gap-1">
             <NavLink to="/guide" className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10" title="Guide d'utilisation">

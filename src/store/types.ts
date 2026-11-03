@@ -106,6 +106,20 @@ export interface DmaicProject {
   gates: Record<DmaicPhase, boolean>
   improvedScenarioId?: string
   notes: Record<DmaicPhase, string>
+  /** démarche choisie à la création (DMAIC complet ou parcours allégé) */
+  method?: MrpMethod
+  /** outils faits, clé « sous-étape:outil » (ex. « 2.2:msa ») */
+  done?: Record<string, boolean>
+  /** résultat clé retenu pour un outil, même clé */
+  results?: Record<string, string>
+  /** cases de la revue de fin de phase */
+  gateChecks?: Partial<Record<DmaicPhase, boolean[]>>
+}
+
+export interface KanbanParams {
+  container: number
+  safety: number
+  loopMin: number | null
 }
 
 export interface FmeaRow {
@@ -177,6 +191,8 @@ export interface ToolsState {
   dmaic: DmaicProject[]
   fmea: FmeaRow[]
   defectLog: DefectRecord[]
+  /** paramètres de dimensionnement Kanban, par scénario */
+  kanban?: Record<string, KanbanParams>
 }
 
 export const DASHBOARD_WIDGETS = [

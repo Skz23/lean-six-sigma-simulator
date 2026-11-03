@@ -128,6 +128,16 @@ export interface ProjectWorkspace {
   mrp?: MrpState
 }
 
+export interface DoeTrials {
+  levels: Record<'temperature' | 'pressure' | 'speed', [number, number]>
+  replicates: number
+  y: (number | null)[]
+  responseName: string
+  goal: 'target' | 'min' | 'max'
+  target: number
+  isCtq: boolean
+}
+
 export interface KanbanParams {
   container: number
   safety: number
@@ -203,6 +213,8 @@ export interface ToolsState {
   dmaic: DmaicProject[]
   fmea: FmeaRow[]
   defectLog: DefectRecord[]
+  /** plans d'expériences réalisés en atelier (résultats saisis), par scénario */
+  doe?: Record<string, DoeTrials>
   /** paramètres de dimensionnement Kanban, par scénario */
   kanban?: Record<string, KanbanParams>
 }

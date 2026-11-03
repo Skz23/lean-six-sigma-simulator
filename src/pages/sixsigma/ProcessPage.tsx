@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceArea, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
 import { normalCdf, normalPdf } from '../../stats/distributions'
+import { parseColumns } from '../../stats/wizard'
+import { applyFit, fitFromHistory } from '../../engine/fitProcess'
+import { pEq } from '../../stats/inference'
+import { Badge, TextArea } from '../../components/ui'
 import { SlidersHorizontal } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
 import { runScenario, useSimulation } from '../../store/useSimulation'
@@ -17,6 +21,13 @@ export default function ProcessPage() {
   const m = sc.process
   const [sp, setSp] = useState<Setpoints>(setpointsOf(m))
   const [noise, setNoise] = useState<Record<ParamKey, number>>(Object.fromEntries(m.params.map((p) => [p.key, p.noiseSd])) as Record<ParamKey, number>)
+  // Modèle modifié ailleurs (estimation sur données, DOE, restauration) : on repart des nouvelles consignes
+  const paramsKey = JSON.stringify(m.params)
+  useEffect(() => {
+    setSp(setpointsOf(m))
+    setNoise(Object.fromEntries(m.params.map((p) => [p.key, p.noiseSd])) as Record<ParamKey, number>)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey])
   const trialModel = { ...m, params: m.params.map((p) => ({ ...p, setpoint: sp[p.key], noiseSd: noise[p.key] })) }
   const before = predict(m, setpointsOf(m), sc.batchSize)
   const after = predict(trialModel, sp, sc.batchSize)
@@ -37,7 +48,7 @@ export default function ProcessPage() {
       <PageHeader icon={<SlidersHorizontal size={20} />} title="Paramètres procédé" subtitle={`Modèle statistique de la caractéristique critique « ${c.name} » au poste ${sc.stations[qIdx]?.name}`} />
       <div className="mb-4">
         <Note tone="warning" title="Fiabilité de cet outil">
-          Les effets des réglages (b_T, b_P, b_V, interaction) sont des <b>hypothèses du modèle</b> : réalistes pour l'exemple MécaPrécis, mais <b>pas estimés sur vos données</b>. Sur une ligne réelle calée sur vos mesures, ils valent 0 tant que vous ne les avez pas renseignés (par exemple à partir d'une régression ou d'un plan d'expériences réalisé en atelier). Les prédictions ne valent que ce que valent ces coefficients.
+          Les effets des réglages (b_T, b_P, b_V, interaction) sont des <b>hypothèses du modèle</b> : réalistes pour l'exemple MécaPrécis, mais <b>pas estimés sur vos données</b>. Sur une ligne réelle calée sur vos mesures, ils valent 0 tant que vous ne les avez pas estimés : utilisez « Estimer les effets à partir de mes données » (plus bas) ou un plan d'expériences réalisé en atelier (outil DOE, mode « Mes essais »). Les prédictions ne valent que ce que valent ces coefficients.
         </Note>
       </div>
       <div className="grid gap-4 xl:grid-cols-12">
@@ -122,6 +133,7 @@ export default function ProcessPage() {
             />
           </Card>
         </div>
+        <FitFromData sc={sc} />
         <Card title="Modèle statistique (paramètres avancés)" className="xl:col-span-12">
           <div className="mb-3 rounded-lg bg-black/[.03] p-3 font-mono text-[12px] leading-relaxed dark:bg-white/[.05]">
             Y = μ₀ + b_T·(T − T_ref) + b_P·(P − P_ref) + b_V·(V − V_ref) + b_TV·(T − T_ref)(V − V_ref)/1000 + δ_lot + u·k + ε<br />
@@ -224,6 +236,71 @@ function NormalCurves({ before, after, lsl, usl, target, unit }: { before: { mea
       <p className="mt-2 text-xs text-[var(--text-secondary)]">
         Hors tolérance attendu : actuel <b>{fmt(out(before.mean, sdB), 0)} ppm</b> → réglage testé <b>{fmt(out(after.mean, sdA), 0)} ppm</b>. Un procédé « six sigma » a ±6σ à l'intérieur des limites (demi-tolérance ≥ 6σ) ; « trois sigma » si les limites tombent à ±3σ. Ici, les limites sont à {fmtFixed(room, 1)}σ de part et d'autre d'un procédé centré, et la plus proche est à {fmtFixed(z, 1)}σ de la moyenne réelle.
       </p>
+    </Card>
+  )
+}
+
+const KEYS: { key: ParamKey; re: RegExp }[] = [
+  { key: 'temperature', re: /temp/i },
+  { key: 'pressure', re: /press/i },
+  { key: 'speed', re: /vit|speed|tr\/?min|rpm/i },
+]
+
+/** Estimation des effets des réglages par régression sur un historique réel (réglages relevés + mesure). */
+function FitFromData({ sc }: { sc: Scenario }) {
+  const update = useStore((s) => s.updateScenario)
+  const [text, setText] = useState('')
+  const m = sc.process
+  const cols = parseColumns(text)
+  const found = KEYS.map((k) => ({ key: k.key, col: cols.find((c) => k.re.test(c.name)) })).filter((x) => x.col)
+  const yCol = cols.find((c) => !KEYS.some((k) => k.re.test(c.name)))
+  const n = Math.min(...[...found.map((f) => f.col!.values.length), yCol?.values.length ?? 0])
+  let fit: ReturnType<typeof fitFromHistory> | null = null
+  let err = ''
+  if (text.trim()) {
+    if (!found.length) err = 'Aucune colonne de réglage reconnue : nommez-les « Température », « Pression », « Vitesse ».'
+    else if (!yCol) err = 'Ajoutez une colonne avec la mesure (ex. « Diamètre »).'
+    else if (n < found.length + 5) err = `Il faut au moins ${found.length + 5} lignes complètes.`
+    else {
+      try {
+        fit = fitFromHistory(m, found.map((f) => ({ key: f.key, values: f.col!.values.slice(0, n) })), yCol.values.slice(0, n))
+      } catch {
+        err = 'Calcul impossible : les réglages ne varient pas assez (ou sont liés entre eux) dans ces données.'
+      }
+    }
+  }
+  return (
+    <Card title="Estimer les effets à partir de mes données" subtitle="Collez un historique de pièces : réglages relevés au moment de l'usinage + mesure obtenue. Une régression multiple calcule l'effet réel de chaque réglage." className="xl:col-span-12">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2">
+          <TextArea rows={7} className="font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} placeholder={'Température\tPression\tVitesse\tDiamètre\n36,2\t61\t1190\t25,012\n…'} />
+          <p className="text-[11px] text-[var(--muted)]">Colonnes reconnues par leur nom : Température, Pression, Vitesse (au moins une) et une colonne de mesure. Les réglages doivent avoir varié dans l'historique, sinon leur effet ne peut pas être estimé (faites alors un plan d'expériences).</p>
+        </div>
+        <div className="text-sm">
+          {err && <Note tone="warning">{err}</Note>}
+          {fit?.reg && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                <Badge>{n} pièces</Badge>
+                <Badge tone={fit.reg.rSquared > 0.3 ? 'good' : 'warning'}>R² = {fmt(fit.reg.rSquared * 100, 1)} %</Badge>
+                <Badge>σ résiduel = {fmtFixed(fit.reg.s * 1000, 1)} µm</Badge>
+              </div>
+              <Table
+                dense
+                head={['Réglage', 'Effet (par unité)', 'p-valeur', '']}
+                rows={fit.reg.terms.slice(1).map((t) => [t.name, t.coef.toExponential(3), pEq(t.pValue), t.pValue < 0.05 ? <Badge key="s" tone="good">significatif</Badge> : <Badge key="n">non prouvé</Badge>])}
+              />
+              <p className="text-xs text-[var(--text-secondary)]">
+                Corrélation n'est pas causalité : un effet trouvé sur un historique se confirme par un essai (plan d'expériences). Les réglages non significatifs sont repris tels quels mais restent incertains.
+              </p>
+              <Button variant="primary" onClick={() => update(sc.id, (s) => applyFit(s.process, fit!), 'Avant estimation des effets sur données réelles')}>
+                Utiliser ces effets dans le modèle
+              </Button>
+              <p className="text-[11px] text-[var(--muted)]">Remplace μ₀, les effets des réglages, la répétabilité, ainsi que les consignes et la régulation (moyenne et écart-type observés de chaque réglage). Une version du scénario est enregistrée avant : restaurable dans Scénarios.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </Card>
   )
 }

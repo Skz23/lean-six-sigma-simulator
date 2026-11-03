@@ -6,7 +6,11 @@ import { samplePart, setpointsOf, type Setpoints } from '../engine/processModel'
 import { analyzeFactorial, fullFactorial, type DoeFactor } from '../stats/doe'
 import { mean, stdDev } from '../stats/descriptive'
 import { useStore } from '../store/useStore'
-import { Badge, Button, Card, Field, Note, NumberInput, Select, Table } from './ui'
+import { Badge, Button, Card, Field, Input, Note, NumberInput, Select, Table } from './ui'
+import clsx from 'clsx'
+import { Rng } from '../engine/random'
+import { applyFit, fitFromDoe } from '../engine/fitProcess'
+import type { DoeTrials } from '../store/types'
 import { ChartBox, S, axisProps, tooltipStyle } from './charts'
 import { fmt, fmtFixed } from '../lib/format'
 
@@ -16,39 +20,76 @@ import { fmt, fmtFixed } from '../lib/format'
  */
 export function DoeTool({ sc }: { sc: Scenario }) {
   const update = useStore((s) => s.updateScenario)
+  const setTools = useStore((s) => s.setTools)
+  const saved = useStore((s) => s.tools.doe?.[sc.id])
   const m = sc.process
-  const [levels, setLevels] = useState<Record<ParamKey, [number, number]>>({
-    temperature: [30, 45],
-    pressure: [50, 70],
-    speed: [1000, 1400],
-  })
-  const [replicates, setReplicates] = useState(2)
+  const [mode, setMode] = useState<'sim' | 'real'>(saved ? 'real' : 'sim')
+  const [levels, setLevelsState] = useState<Record<ParamKey, [number, number]>>(
+    saved?.levels ?? {
+      temperature: [30, 45],
+      pressure: [50, 70],
+      speed: [1000, 1400],
+    },
+  )
+  const [replicates, setReplicatesState] = useState(saved?.replicates ?? 2)
   const [partsPerRun, setPartsPerRun] = useState(10)
   const [response, setResponse] = useState<'mean' | 'sd'>('mean')
   const [seed, setSeed] = useState(1)
   const factors: DoeFactor[] = m.params.map((p) => ({ name: p.name, low: levels[p.key][0], high: levels[p.key][1], unit: p.unit }))
+  const runs = useMemo(() => fullFactorial(factors, replicates), [JSON.stringify(factors), replicates]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Ordre de réalisation tiré au hasard (randomisation) : protège contre les dérives pendant les essais
+  const execOrder = useMemo(() => {
+    const r = new Rng(97 + runs.length)
+    const idx = runs.map((_, i) => i)
+    for (let i = idx.length - 1; i > 0; i--) {
+      const j = Math.floor(r.next() * (i + 1))
+      ;[idx[i], idx[j]] = [idx[j], idx[i]]
+    }
+    const rank = new Array<number>(idx.length)
+    idx.forEach((runIdx, k) => (rank[runIdx] = k + 1))
+    return rank
+  }, [runs.length])
+
+  const trials: DoeTrials = saved && saved.y.length === runs.length && JSON.stringify(saved.levels) === JSON.stringify(levels)
+    ? saved
+    : { levels, replicates, y: runs.map(() => null), responseName: saved?.responseName ?? m.characteristic.name, goal: saved?.goal ?? 'target', target: saved?.target ?? m.characteristic.nominal, isCtq: saved?.isCtq ?? true }
+  const saveTrials = (patch: Partial<DoeTrials>) =>
+    setTools((t) => {
+      const d = (t.doe ??= {})
+      d[sc.id] = { ...trials, levels, replicates, ...patch }
+    })
+  const setLevels = (l: Record<ParamKey, [number, number]>) => {
+    setLevelsState(l)
+    if (mode === 'real') setTools((t) => { const d = (t.doe ??= {}); d[sc.id] = { ...trials, levels: l, y: fullFactorial(m.params.map((p) => ({ name: p.name, low: l[p.key][0], high: l[p.key][1] })), replicates).map(() => null) } })
+  }
+  const setReplicates = (n: number) => {
+    setReplicatesState(n)
+    if (mode === 'real') setTools((t) => { const d = (t.doe ??= {}); d[sc.id] = { ...trials, replicates: n, y: Array.from({ length: 2 ** m.params.length * n }, () => null) } })
+  }
+  const filled = trials.y.filter((v) => v !== null && Number.isFinite(v)).length
+  const complete = mode === 'sim' || filled === runs.length
 
   const data = useMemo(() => {
-    const runs = fullFactorial(factors, replicates)
+    if (mode === 'real') return runs.map((r, i) => ({ run: r, mean: trials.y[i] ?? NaN, sd: NaN }))
     // ordre d'exécution aléatoire (randomisation) — la graine change l'ordre et les aléas
-    const out = runs.map((r, i) => {
+    return runs.map((r, i) => {
       const sp = { ...setpointsOf(m) } as Setpoints
       m.params.forEach((p, j) => (sp[p.key] = r.actual[j]))
       const parts = samplePart(m, sp, partsPerRun, partsPerRun, seed * 1000 + i + 1)
       const ys = parts.map((x) => x.y)
       return { run: r, mean: mean(ys), sd: stdDev(ys) }
     })
-    return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(levels), replicates, partsPerRun, seed, JSON.stringify(m)])
+  }, [mode, runs, JSON.stringify(trials.y), partsPerRun, seed, JSON.stringify(m)])
 
-  const y = data.map((d) => (response === 'mean' ? d.mean : d.sd))
-  const target = m.characteristic.nominal
+  const y = data.map((d) => (mode === 'real' || response === 'mean' ? d.mean : d.sd))
+  const target = mode === 'real' ? trials.target : m.characteristic.nominal
+  const goal = mode === 'real' ? trials.goal : response === 'mean' ? 'target' : 'min'
   const an = analyzeFactorial(
     data.map((d) => d.run),
-    y,
+    complete ? y : y.map(() => 0),
     factors.map((f) => f.name.split(' ')[0]),
-    response === 'mean' ? 'target' : 'min',
+    goal,
     target,
   )
   const best = an.bestSetting.coded.map((c, j) => (c < 0 ? factors[j].low : factors[j].high))
@@ -72,9 +113,17 @@ export function DoeTool({ sc }: { sc: Scenario }) {
 
   return (
     <div className="space-y-4">
-      <Note tone="warning" title="Essais simulés">
-        Les résultats des essais sont produits par le modèle du procédé (hypothèses de l'exemple), pas mesurés dans votre atelier. Utile pour apprendre la méthode ; pour un vrai projet, les essais doivent être réalisés en atelier.
-      </Note>
+      <Card bodyClass="flex flex-wrap items-center gap-3 p-3">
+        <span className="text-sm font-medium">Résultats des essais :</span>
+        <div className="flex gap-1 rounded-lg border border-black/[.08] p-1 dark:border-white/10">
+          {([['real', 'Mes essais en atelier'], ['sim', 'Simulés (démonstration)']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setMode(k)} className={clsx('rounded-md px-3 py-1.5 text-sm font-medium', mode === k ? 'bg-brand-600 text-white' : 'text-[var(--text-secondary)] hover:bg-black/5 dark:hover:bg-white/10')}>{l}</button>
+          ))}
+        </div>
+        <span className="text-xs text-[var(--muted)]">
+          {mode === 'real' ? 'Réalisez les essais dans l\'ordre indiqué, saisissez la réponse mesurée : l\'appli calcule effets, interactions et meilleur réglage.' : 'Les réponses sont produites par le modèle du procédé (hypothèses de l\'exemple) : pour apprendre la méthode, pas pour décider.'}
+        </span>
+      </Card>
       <Card title="Définition du plan factoriel complet 2³" subtitle="3 facteurs × 2 niveaux, essais répétés et randomisés">
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           {m.params.map((p) => (
@@ -92,24 +141,90 @@ export function DoeTool({ sc }: { sc: Scenario }) {
               {[1, 2, 3, 4].map((k) => <option key={k}>{k}</option>)}
             </Select>
           </Field>
-          <Field label="Pièces par essai">
+          {mode === 'sim' && <Field label="Pièces par essai">
             <Select value={partsPerRun} onChange={(e) => setPartsPerRun(+e.target.value)}>
               {[5, 10, 20, 30].map((k) => <option key={k}>{k}</option>)}
             </Select>
-          </Field>
-          <Field label="Réponse étudiée">
-            <Select value={response} onChange={(e) => setResponse(e.target.value as 'mean' | 'sd')}>
-              <option value="mean">Moyenne du diamètre (cible {target})</option>
-              <option value="sd">Écart-type du diamètre (minimiser)</option>
-            </Select>
-          </Field>
-          <div className="flex items-end">
-            <Button onClick={() => setSeed(seed + 1)}>
-              <FlaskConical size={14} /> Refaire les essais
-            </Button>
-          </div>
+          </Field>}
+          {mode === 'sim' ? (
+            <>
+              <Field label="Réponse étudiée">
+                <Select value={response} onChange={(e) => setResponse(e.target.value as 'mean' | 'sd')}>
+                  <option value="mean">Moyenne du diamètre (cible {m.characteristic.nominal})</option>
+                  <option value="sd">Écart-type du diamètre (minimiser)</option>
+                </Select>
+              </Field>
+              <div className="flex items-end">
+                <Button onClick={() => setSeed(seed + 1)}>
+                  <FlaskConical size={14} /> Refaire les essais
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Réponse mesurée">
+                <Input value={trials.responseName} onChange={(e) => saveTrials({ responseName: e.target.value })} />
+              </Field>
+              <Field label="Objectif">
+                <Select value={trials.goal} onChange={(e) => saveTrials({ goal: e.target.value as DoeTrials['goal'] })}>
+                  <option value="target">Viser une cible</option>
+                  <option value="min">Minimiser</option>
+                  <option value="max">Maximiser</option>
+                </Select>
+              </Field>
+              {trials.goal === 'target' && (
+                <Field label="Cible">
+                  <NumberInput value={trials.target} step={0.001} onChange={(v) => saveTrials({ target: v })} />
+                </Field>
+              )}
+            </>
+          )}
         </div>
       </Card>
+      {mode === 'real' && (
+        <Card title={`Essais à réaliser — ${filled} / ${runs.length} saisis`} subtitle="Suivez l'ordre de réalisation (tiré au hasard). Saisissez pour chaque essai la réponse mesurée (ex. moyenne de 5 pièces), ou collez une colonne depuis Excel dans l'ordre des essais.">
+          <div className="max-h-96 overflow-y-auto">
+            <Table
+              dense
+              head={['Essai', 'Ordre de réalisation', ...factors.map((f) => f.name.split(' ')[0]), trials.responseName || 'Réponse']}
+              rows={runs.map((r, i) => [
+                r.order,
+                <b key="o">{execOrder[i]}</b>,
+                ...r.actual.map((v, j) => `${v} ${factors[j].unit}`),
+                <input
+                  key={`y-${i}-${trials.y[i] ?? ''}`}
+                  className="h-7 w-28 rounded-md border border-black/10 bg-transparent px-2 text-sm dark:border-white/15"
+                  inputMode="decimal"
+                  defaultValue={trials.y[i] === null || trials.y[i] === undefined ? '' : String(trials.y[i]).replace('.', ',')}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim().replace(',', '.')
+                    const nv = v === '' || !Number.isFinite(+v) ? null : +v
+                    if (nv === trials.y[i]) return
+                    const y2 = [...trials.y]
+                    y2[i] = nv
+                    saveTrials({ y: y2 })
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                  onPaste={(e) => {
+                    const lines = e.clipboardData.getData('text').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+                    if (lines.length < 2) return
+                    e.preventDefault()
+                    const y2 = [...trials.y]
+                    lines.forEach((l, k) => {
+                      const v = +l.replace(',', '.')
+                      if (i + k < y2.length && Number.isFinite(v)) y2[i + k] = v
+                    })
+                    saveTrials({ y: y2 })
+                  }}
+                />,
+              ])}
+            />
+          </div>
+        </Card>
+      )}
+      {!complete ? (
+        <Note>L'analyse s'affichera quand les {runs.length} essais seront saisis.</Note>
+      ) : (
       <div className="grid gap-4 xl:grid-cols-12">
         <Card title="Effets estimés" subtitle="Effet = moyenne(+) − moyenne(−) · en couleur : significatif (p < 0,05)" className="xl:col-span-6">
           <ChartBox height={260}>
@@ -157,8 +272,8 @@ export function DoeTool({ sc }: { sc: Scenario }) {
           <div className="max-h-80 overflow-y-auto">
             <Table
               dense
-              head={['Essai', ...factors.map((f) => f.name.split(' ')[0]), 'Moyenne Y', 'σ Y']}
-              rows={data.map((d) => [d.run.order, ...d.run.actual.map((v, j) => `${v} ${factors[j].unit}`), fmtFixed(d.mean, 4), fmtFixed(d.sd * 1000, 1) + ' µm'])}
+              head={['Essai', ...factors.map((f) => f.name.split(' ')[0]), mode === 'real' ? trials.responseName || 'Réponse' : 'Moyenne Y', ...(mode === 'sim' ? ['σ Y'] : [])]}
+              rows={data.map((d) => [d.run.order, ...d.run.actual.map((v, j) => `${v} ${factors[j].unit}`), fmtFixed(d.mean, 4), ...(mode === 'sim' ? [fmtFixed(d.sd * 1000, 1) + ' µm'] : [])])}
             />
           </div>
         </Card>
@@ -189,9 +304,34 @@ export function DoeTool({ sc }: { sc: Scenario }) {
             >
               Appliquer ce réglage au scénario « {sc.name} »
             </Button>
+            {mode === 'real' && (
+              <div className="rounded-lg border border-brand-500/30 p-2.5 text-xs">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={trials.isCtq} onChange={(e) => saveTrials({ isCtq: e.target.checked })} />
+                  La réponse est la caractéristique critique « {m.characteristic.name} » ({m.characteristic.unit})
+                </label>
+                {trials.isCtq && (
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={() =>
+                      update(
+                        sc.id,
+                        (s) => applyFit(s.process, fitFromDoe(s.process, levels, an.effects, mean(y))),
+                        'Avant mise à jour du modèle par le DOE',
+                      )
+                    }
+                  >
+                    Mettre à jour le modèle procédé avec ces effets
+                  </Button>
+                )}
+                <p className="mt-1.5 text-[var(--muted)]">Les effets mesurés remplacent les hypothèses dans « Paramètres procédé » (effets principaux et interaction T×V ; les autres interactions ne sont pas reprises).</p>
+              </div>
+            )}
           </div>
         </Card>
       </div>
+      )}
     </div>
   )
 }

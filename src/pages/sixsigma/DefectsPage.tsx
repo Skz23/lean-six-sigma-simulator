@@ -1,3 +1,4 @@
+import clsx from 'clsx'
 import { useState } from 'react'
 import { useCurrentTool, useUrlTab } from '../../lib/useUrlTab'
 import { Download, Plus, SearchCheck, Trash2 } from 'lucide-react'
@@ -177,18 +178,44 @@ export default function DefectsPage() {
       )}
       {tab === 'root' && project && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card title="Synthèse des causes racines">
-            <ul className="space-y-2 text-sm">
-              {project.whys.filter((w) => w.rootCause).map((w) => (
-                <li key={w.id} className="rounded-lg bg-black/[.03] p-2.5 dark:bg-white/[.05]">
-                  <div className="text-xs text-[var(--muted)]">{w.problem}</div>
-                  <div className="font-semibold text-[var(--critical)]">{w.rootCause}</div>
-                </li>
-              ))}
-              {project.causes.filter((c) => c.likely).map((c) => (
-                <li key={c.id} className="flex items-center gap-2"><span className="text-xs text-[var(--muted)]">{c.category}</span> {c.text}</li>
-              ))}
-            </ul>
+          <Card title="Synthèse des causes racines" subtitle="Ne retenez une cause que si les données l'ont confirmée (étape 3.3) : cochez-la et notez la preuve">
+            {(() => {
+              const items = [
+                ...project.whys.filter((w) => w.rootCause.trim()).map((w) => ({ id: w.id, label: w.rootCause, from: `5 Pourquoi — ${w.problem}` })),
+                ...project.causes.filter((c) => c.likely).map((c) => ({ id: c.id, label: c.text, from: `Ishikawa — ${c.category}` })),
+              ]
+              const nOk = items.filter((x) => project.rootChecks?.[x.id]?.verified).length
+              if (!items.length) return <p className="text-sm text-[var(--muted)]">Aucune cause : marquez des causes « probables » dans l'Ishikawa ou complétez une cause racine dans les 5 Pourquoi.</p>
+              return (
+                <>
+                  <p className="mb-2 text-xs text-[var(--text-secondary)]"><b>{nOk} / {items.length}</b> causes vérifiées par les données.</p>
+                  <ul className="space-y-2 text-sm">
+                    {items.map((x) => {
+                      const chk = project.rootChecks?.[x.id] ?? { verified: false, proof: '' }
+                      return (
+                        <li key={x.id} className={clsx('rounded-lg border p-2.5', chk.verified ? 'border-[var(--good)]/40 bg-green-600/[.04]' : 'border-black/[.06] dark:border-white/10')}>
+                          <div className="text-[11px] text-[var(--muted)]">{x.from}</div>
+                          <div className="font-semibold">{x.label}</div>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <label className="flex shrink-0 items-center gap-1.5 text-xs">
+                              <input type="checkbox" className="accent-[var(--color-brand-600)]" checked={chk.verified} onChange={(e) => setProject((p) => ((p.rootChecks ??= {})[x.id] = { ...chk, verified: e.target.checked }))} />
+                              Vérifiée
+                            </label>
+                            <input
+                              className="h-7 min-w-0 flex-1 rounded-md border border-black/10 bg-transparent px-2 text-xs dark:border-white/15"
+                              placeholder="Preuve (ex. régression T → Ø : r = 0,62, p < 0,001)"
+                              value={chk.proof}
+                              onChange={(e) => setProject((p) => ((p.rootChecks ??= {})[x.id] = { ...chk, proof: e.target.value }))}
+                            />
+                          </div>
+                          {!chk.verified && <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">Hypothèse non vérifiée : à confirmer avant d'agir.</div>}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )
+            })()}
           </Card>
           <Card title="Vérification par les données">
             <div className="space-y-2 text-sm text-[var(--text-secondary)]">

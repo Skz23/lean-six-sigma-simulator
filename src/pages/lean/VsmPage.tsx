@@ -1,8 +1,9 @@
-import { Map as MapIcon } from 'lucide-react'
+import { Map as MapIcon, Pencil } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useActiveScenario } from '../../store/useStore'
 import { useSimulation } from '../../store/useSimulation'
 import { vsmData } from '../../lean/tools'
-import { Card, Kpi, Note, PageHeader, Table } from '../../components/ui'
+import { Button, Card, Kpi, Note, PageHeader, Table } from '../../components/ui'
 import { duration, fmt, pct } from '../../lib/format'
 
 export default function VsmPage() {
@@ -28,7 +29,15 @@ export default function VsmPage() {
 
   return (
     <div>
-      <PageHeader icon={<MapIcon size={20} />} title="Value Stream Mapping (VSM)" subtitle="Cartographie générée à partir de la configuration et des encours moyens simulés" />
+      <PageHeader
+        icon={<MapIcon size={20} />}
+        title="Value Stream Mapping (VSM)"
+        subtitle={`Calculée automatiquement à partir de la ligne « ${sc.name} » et de sa journée simulée`}
+        actions={<Link to="/lean/line"><Button><Pencil size={14} /> Modifier la ligne</Button></Link>}
+      />
+      <div className="mb-4">
+        <Note>La VSM n'a pas de données propres : elle est recalculée à chaque modification de la ligne (postes, temps de cycle, changements de série, stocks, demande). Pour la changer, modifiez la ligne de production.</Note>
+      </div>
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Kpi label="Lead Time global" value={fmt(v.leadDays, 2)} unit="jours" hint={duration(v.leadSeconds)} />
         <Kpi label="Temps à valeur ajoutée" value={fmt(v.vaSeconds, 0)} unit="s" />

@@ -4,7 +4,7 @@ import { PHASES, type Phase, type PhaseId, type Step, type StepTool } from './ph
 
 /** Outils du parcours allégé (Kaizen, A3, 8D) : l'essentiel de chaque étape, sans la statistique avancée. */
 export const LIGHT_TOOLS = new Set([
-  'qqoqcpc', 'method', 'voc', 'sipoc', 'vsm', 'charter',
+  'qqoqcpc', 'voc', 'sipoc', 'vsm', 'charter',
   'defect-log', 'data', 'simulation', 'kpi', 'capability',
   'pareto', 'muda', 'toc', 'ideas', 'ishikawa', 'why', 'root', 'plan',
   'smed', 'kanban', 'vote', 'scenarios',

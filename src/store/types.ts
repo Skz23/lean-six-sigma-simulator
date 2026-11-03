@@ -114,6 +114,8 @@ export interface DmaicProject {
   results?: Record<string, string>
   /** cases de la revue de fin de phase */
   gateChecks?: Partial<Record<DmaicPhase, boolean[]>>
+  /** vérification des causes racines (3.4) : clé = id de la cause Ishikawa ou de la chaîne 5 Pourquoi */
+  rootChecks?: Record<string, { verified: boolean; proof: string }>
   /** données des outils du projet quand il n'est pas le projet en cours (voir openProject) */
   ws?: ProjectWorkspace
 }

@@ -133,7 +133,7 @@ export default function DmaicPage() {
               </Button>
             </div>
           </div>
-          {p.phase === 'define' && <Define p={p} set={set} />}
+          {p.phase === 'define' && <Define p={p} set={set} focus={params.get('focus')} />}
           {p.phase === 'measure' && <Measure p={p} />}
           {p.phase === 'analyze' && <Analyze p={p} set={set} />}
           {p.phase === 'improve' && <Improve p={p} set={set} />}
@@ -149,7 +149,7 @@ export default function DmaicPage() {
 
 type SetFn = (fn: (p: DmaicProject) => void) => void
 
-function Define({ p, set }: { p: DmaicProject; set: SetFn }) {
+function Define({ p, set, focus }: { p: DmaicProject; set: SetFn; focus?: string | null }) {
   const ch = p.charter
   const f = (k: keyof DmaicProject['charter'], label: string, area = false) => (
     <Field label={label}>
@@ -157,8 +157,7 @@ function Define({ p, set }: { p: DmaicProject; set: SetFn }) {
     </Field>
   )
   const sipocKeys: (keyof SipocRow)[] = ['supplier', 'input', 'process', 'output', 'customer']
-  return (
-    <div className="grid gap-4 xl:grid-cols-2">
+  const charter = (
       <Card title="Charte projet">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">{f('problem', 'Énoncé du problème', true)}</div>
@@ -174,7 +173,8 @@ function Define({ p, set }: { p: DmaicProject; set: SetFn }) {
           <Field label="Fin prévue"><Input type="date" value={ch.endDate} onChange={(e) => set((x) => (x.charter.endDate = e.target.value))} /></Field>
         </div>
       </Card>
-      <div className="space-y-4">
+  )
+  const voc = (
         <Card title="Voix du client (VOC) → CTQ" actions={<Button size="sm" onClick={() => set((x) => x.voc.push({ id: uid('v'), voice: '', need: '', ctq: '', measure: '', target: '' }))}><Plus size={13} /> VOC</Button>}>
           <div className="space-y-2">
             {p.voc.map((v, i) => (
@@ -190,6 +190,8 @@ function Define({ p, set }: { p: DmaicProject; set: SetFn }) {
             <p className="text-[11px] text-[var(--muted)]">Verbatim → besoin → caractéristique critique mesurable (CTQ) → cible.</p>
           </div>
         </Card>
+  )
+  const sipoc = (
         <Card title="SIPOC" subtitle="Suppliers · Inputs · Process · Outputs · Customers" actions={<Button size="sm" onClick={() => set((x) => x.sipoc.push({ supplier: '', input: '', process: '', output: '', customer: '' }))}><Plus size={13} /> Ligne</Button>}>
           <div className="overflow-x-auto">
             <div className="grid min-w-[560px] grid-cols-[repeat(5,1fr)_24px] gap-1.5 text-xs">
@@ -207,6 +209,16 @@ function Define({ p, set }: { p: DmaicProject; set: SetFn }) {
             </div>
           </div>
         </Card>
+  )
+  if (focus === 'charter') return charter
+  if (focus === 'voc') return voc
+  if (focus === 'sipoc') return sipoc
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      {charter}
+      <div className="space-y-4">
+        {voc}
+        {sipoc}
       </div>
     </div>
   )

@@ -45,7 +45,7 @@ export const PHASES: Phase[] = [
     deliverables: ['Charte projet signée', 'Énoncé du problème (QQOQCPC)', 'CTQ issus de la voix du client', 'SIPOC et cartographie du flux actuel'],
     gate: ['Le problème est mesurable', 'Le client et ses CTQ sont identifiés', 'Le périmètre et l\'équipe sont validés', 'L\'objectif est chiffré et daté'],
     steps: [
-      { n: '1.1', title: 'Décrire le problème', hint: 'Partir des faits, pas d\'une solution supposée.', tools: [{ id: 'qqoqcpc' }, { id: 'method' }] },
+      { n: '1.1', title: 'Décrire le problème', hint: 'Partir des faits, pas d\'une solution supposée.', tools: [{ id: 'qqoqcpc' }] },
       { n: '1.2', title: 'Écouter le client', hint: 'Ce qui compte pour le client devient une caractéristique mesurable (CTQ).', tools: [{ id: 'voc' }, { id: 'kano' }] },
       { n: '1.3', title: 'Délimiter le processus', hint: 'Où commence et où finit le processus étudié, et comment le flux circule aujourd\'hui.', tools: [{ id: 'sipoc' }, { id: 'vsm', role: 'Cartographie de l\'état actuel' }, { id: 'line', role: 'Modéliser la ligne actuelle' }] },
       { n: '1.4', title: 'Formaliser le projet', hint: 'Enjeu, objectif chiffré, périmètre, équipe et planning validés par le commanditaire.', tools: [{ id: 'charter' }] },
@@ -157,13 +157,12 @@ export interface Tool {
 
 const CATALOG: Omit<Tool, 'phases'>[] = [
   { id: 'qqoqcpc', name: 'QQOQCPC', to: '/methode/qqoqcpc', family: 'Qualité', desc: 'Décrire le problème par les faits : quoi, qui, où, quand, comment, pourquoi, combien.' },
-  { id: 'method', name: 'Choisir la démarche', to: '/methode/choose', family: 'Qualité', desc: 'Kaizen, A3, 8D ou DMAIC selon la complexité du problème et si la solution est connue.' },
-  { id: 'voc', name: 'Voix du client → CTQ', to: '/sixsigma/dmaic?phase=define', family: 'Projet', desc: 'Traduire les attentes du client en caractéristiques mesurables avec une cible.' },
+  { id: 'voc', name: 'Voix du client → CTQ', to: '/sixsigma/dmaic?phase=define&focus=voc', family: 'Projet', desc: 'Traduire les attentes du client en caractéristiques mesurables avec une cible.' },
   { id: 'kano', name: 'Kano', to: '/methode/kano', family: 'Qualité', desc: 'Classer les attentes des clients : obligatoires, proportionnelles, attractives.' },
-  { id: 'sipoc', name: 'SIPOC', to: '/sixsigma/dmaic?phase=define', family: 'Projet', desc: 'Fournisseurs, entrées, processus, sorties, clients : le périmètre en une ligne.' },
+  { id: 'sipoc', name: 'SIPOC', to: '/sixsigma/dmaic?phase=define&focus=sipoc', family: 'Projet', desc: 'Fournisseurs, entrées, processus, sorties, clients : le périmètre en une ligne.' },
   { id: 'vsm', name: 'VSM — cartographie du flux', to: '/lean/vsm', family: 'Lean', desc: 'Chaîne de valeur : stocks, temps de cycle, ligne de temps VA / NVA.' },
   { id: 'line', name: 'Ligne de production', to: '/lean/line', family: 'Simulation', desc: 'Postes, journée, demande, lots et pilotage poussé / tiré.' },
-  { id: 'charter', name: 'Charte projet', to: '/sixsigma/dmaic?phase=define', family: 'Projet', desc: 'Problème, enjeu, objectif, périmètre, indicateur de départ et cible.' },
+  { id: 'charter', name: 'Charte projet', to: '/sixsigma/dmaic?phase=define&focus=charter', family: 'Projet', desc: 'Problème, enjeu, objectif, périmètre, indicateur de départ et cible.' },
   { id: 'power', name: 'Échantillonnage — puissance et effectif', to: '/sixsigma/stats/power', family: 'Statistiques', desc: 'Combien de mesures collecter pour détecter un écart donné.' },
   { id: 'defect-log', name: 'Registre des défauts', to: '/sixsigma/defects/log', family: 'Qualité', desc: 'Types de défauts, postes, quantités, coûts.' },
   { id: 'msa', name: 'Étude R&R (ANOVA)', to: '/sixsigma/msa/rr', family: 'Six Sigma', desc: 'Répétabilité et reproductibilité du moyen de mesure : %R&R, ndc.' },

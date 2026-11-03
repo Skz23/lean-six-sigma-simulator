@@ -72,6 +72,9 @@ export function DoeTool({ sc }: { sc: Scenario }) {
 
   return (
     <div className="space-y-4">
+      <Note tone="warning" title="Essais simulés">
+        Les résultats des essais sont produits par le modèle du procédé (hypothèses de l'exemple), pas mesurés dans votre atelier. Utile pour apprendre la méthode ; pour un vrai projet, les essais doivent être réalisés en atelier.
+      </Note>
       <Card title="Définition du plan factoriel complet 2³" subtitle="3 facteurs × 2 niveaux, essais répétés et randomisés">
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           {m.params.map((p) => (

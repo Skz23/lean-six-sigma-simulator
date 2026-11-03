@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceArea, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
+import { normalCdf, normalPdf } from '../../stats/distributions'
 import { SlidersHorizontal } from 'lucide-react'
 import { useActiveScenario, useStore } from '../../store/useStore'
 import { runScenario, useSimulation } from '../../store/useSimulation'
@@ -34,6 +35,11 @@ export default function ProcessPage() {
   return (
     <div>
       <PageHeader icon={<SlidersHorizontal size={20} />} title="Paramètres procédé" subtitle={`Modèle statistique de la caractéristique critique « ${c.name} » au poste ${sc.stations[qIdx]?.name}`} />
+      <div className="mb-4">
+        <Note tone="warning" title="Fiabilité de cet outil">
+          Les effets des réglages (b_T, b_P, b_V, interaction) sont des <b>hypothèses du modèle</b> : réalistes pour l'exemple MécaPrécis, mais <b>pas estimés sur vos données</b>. Sur une ligne réelle calée sur vos mesures, ils valent 0 tant que vous ne les avez pas renseignés (par exemple à partir d'une régression ou d'un plan d'expériences réalisé en atelier). Les prédictions ne valent que ce que valent ces coefficients.
+        </Note>
+      </div>
       <div className="grid gap-4 xl:grid-cols-12">
         <Card title="Réglages machine (what-if)" subtitle="Consigne et qualité de régulation (écart-type autour de la consigne)" className="xl:col-span-5">
           <div className="space-y-4">
@@ -89,6 +95,7 @@ export default function ProcessPage() {
             <Kpi label="Cpk prédit" value={fmtFixed(after.cpk, 2)} before={before.cpk} after={after.cpk} higherIsBetter tone={after.cpk >= 1.33 ? 'good' : after.cpk < 1 ? 'critical' : 'warning'} />
             <Kpi label="CT poste CTQ" value={fmt(ctAfter, 1)} unit="s" before={ctBefore} after={ctAfter} higherIsBetter={false} hint="Modulé par la vitesse" />
           </div>
+          <NormalCurves before={{ mean: before.mean, sd: before.sdOverall }} after={{ mean: after.mean, sd: after.sdOverall }} lsl={c.lsl} usl={c.usl} target={c.nominal} unit={c.unit} />
           <Card title="Contributions à la variance (méthode delta)" subtitle="Quelle source de variation réduire en priorité ?">
             <ChartBox height={220}>
               <BarChart data={after.contributions.map((x) => ({ name: x.source, v: (x.variance / after.sdOverall ** 2) * 100 }))} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }}>
@@ -172,5 +179,51 @@ export default function ProcessPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+/** Courbes de Gauss avant / après avec limites de tolérance, ±3σ et ±6σ du réglage testé. */
+function NormalCurves({ before, after, lsl, usl, target, unit }: { before: { mean: number; sd: number }; after: { mean: number; sd: number }; lsl: number; usl: number; target: number; unit: string }) {
+  const sdA = Math.max(after.sd, 1e-9)
+  const sdB = Math.max(before.sd, 1e-9)
+  const lo = Math.min(lsl, after.mean - 6.5 * sdA, before.mean - 4 * sdB)
+  const hi = Math.max(usl, after.mean + 6.5 * sdA, before.mean + 4 * sdB)
+  const N = 240
+  const data = Array.from({ length: N + 1 }, (_, i) => {
+    const x = lo + ((hi - lo) * i) / N
+    return { x, avant: normalPdf(x, before.mean, sdB), apres: normalPdf(x, after.mean, sdA) }
+  })
+  const out = (m: number, sd: number) => (normalCdf((lsl - m) / sd) + 1 - normalCdf((usl - m) / sd)) * 1e6
+  const z = Math.min(usl - after.mean, after.mean - lsl) / sdA
+  const room = (usl - lsl) / 2 / sdA
+  const f = (v: number) => fmtFixed(v, 3)
+  return (
+    <Card
+      title="Courbe de normalité — où sont les limites en nombre de σ ?"
+      subtitle={`Réglage testé : moyenne ${f(after.mean)} ${unit}, σ ${fmtFixed(sdA * 1000, 1)} µm · Z (limite la plus proche) = ${fmtFixed(z, 2)} σ · demi-tolérance = ${fmtFixed(room, 2)} σ`}
+    >
+      <ChartBox height={250}>
+        <LineChart data={data} margin={{ top: 18, right: 16, bottom: 0, left: -20 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="x" type="number" domain={[lo, hi]} tickFormatter={(v) => f(Number(v))} {...axisProps} />
+          <YAxis {...axisProps} tick={false} />
+          <ReferenceArea x1={lo} x2={lsl} fill="var(--critical)" fillOpacity={0.06} />
+          <ReferenceArea x1={usl} x2={hi} fill="var(--critical)" fillOpacity={0.06} />
+          {[-6, -3, 3, 6].map((k) => (
+            <ReferenceLine key={k} x={after.mean + k * sdA} stroke="var(--muted)" strokeDasharray={Math.abs(k) === 6 ? '2 4' : '5 4'} label={{ value: `${k > 0 ? '+' : ''}${k}σ`, position: 'top', fill: 'var(--muted)', fontSize: 10 }} />
+          ))}
+          <ReferenceLine x={lsl} stroke="var(--critical)" strokeWidth={2} label={{ value: 'LSL', position: 'insideTopLeft', fill: 'var(--critical)', fontSize: 11 }} />
+          <ReferenceLine x={usl} stroke="var(--critical)" strokeWidth={2} label={{ value: 'USL', position: 'insideTopRight', fill: 'var(--critical)', fontSize: 11 }} />
+          <ReferenceLine x={target} stroke="var(--good)" strokeDasharray="3 3" />
+          <Tooltip {...tooltipStyle} labelFormatter={(v) => `${f(Number(v))} ${unit}`} formatter={(v, n) => [fmt(Number(v), 1), n === 'apres' ? 'Réglage testé' : 'Actuel']} />
+          <Legend verticalAlign="bottom" height={22} formatter={(v) => (v === 'apres' ? 'Réglage testé' : 'Actuel')} />
+          <Line dataKey="avant" stroke="var(--muted)" strokeDasharray="4 3" dot={false} strokeWidth={1.5} isAnimationActive={false} />
+          <Line dataKey="apres" stroke={S(0)} dot={false} strokeWidth={2.5} isAnimationActive={false} />
+        </LineChart>
+      </ChartBox>
+      <p className="mt-2 text-xs text-[var(--text-secondary)]">
+        Hors tolérance attendu : actuel <b>{fmt(out(before.mean, sdB), 0)} ppm</b> → réglage testé <b>{fmt(out(after.mean, sdA), 0)} ppm</b>. Un procédé « six sigma » a ±6σ à l'intérieur des limites (demi-tolérance ≥ 6σ) ; « trois sigma » si les limites tombent à ±3σ. Ici, les limites sont à {fmtFixed(room, 1)}σ de part et d'autre d'un procédé centré, et la plus proche est à {fmtFixed(z, 1)}σ de la moyenne réelle.
+      </p>
+    </Card>
   )
 }

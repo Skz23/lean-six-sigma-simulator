@@ -47,8 +47,12 @@ function topDefects(ws: ProjectWorkspace): string[] {
 }
 
 export function rootCauses(p: DmaicProject): string[] {
-  const fromWhy = p.whys.filter((w) => w.rootCause.trim()).map((w) => w.rootCause.trim())
-  const likely = p.causes.filter((c) => c.likely).map((c) => `${c.text} (${c.category})`)
+  const tag = (id: string, label: string) => {
+    const c = p.rootChecks?.[id]
+    return c?.verified ? `${label} [vérifiée${c.proof.trim() ? ` : ${c.proof.trim()}` : ''}]` : `${label} [hypothèse non vérifiée]`
+  }
+  const fromWhy = p.whys.filter((w) => w.rootCause.trim()).map((w) => tag(w.id, w.rootCause.trim()))
+  const likely = p.causes.filter((c) => c.likely).map((c) => tag(c.id, `${c.text} (${c.category})`))
   return [...new Set([...fromWhy, ...likely])]
 }
 

@@ -4,6 +4,8 @@ import { useStore } from '../store/useStore'
 import { runScenario } from '../store/useSimulation'
 import { SECTIONS } from '../report/sections'
 import { METRICS, profitability } from '../engine/compare'
+import { ProjectExports } from '../components/ProjectExports'
+import { useCurrentProject } from '../store/useStore'
 import { Button, Card, Delta, Field, Input, Note, PageHeader, Select, Table } from '../components/ui'
 import { eur, fmt } from '../lib/format'
 
@@ -41,6 +43,7 @@ export default function ReportsPage() {
   return (
     <div>
       <PageHeader icon={<FileText size={20} />} title="Rapports et analyses" subtitle="Génération d'un rapport PDF professionnel à partir des scénarios et des outils renseignés" />
+      <ProjectDeliverables />
       <div className="grid gap-4 xl:grid-cols-12">
         <Card title="Paramètres du rapport" className="xl:col-span-4">
           <div className="space-y-3">
@@ -89,5 +92,15 @@ export default function ReportsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function ProjectDeliverables() {
+  const p = useCurrentProject()
+  if (!p) return null
+  return (
+    <Card title={`Livrables du projet « ${p.name} »`} subtitle="Remplis automatiquement avec la charte, les résultats retenus, les causes, les solutions et le plan de contrôle du projet. Ce que vous avez écrit dans les fiches A3 et 8D est repris en priorité." className="mb-4">
+      <ProjectExports />
+    </Card>
   )
 }

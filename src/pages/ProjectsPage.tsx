@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import clsx from 'clsx'
 import { ArrowRight, CheckCircle2, Circle, Copy, FolderOpen, Plus, Trash2, X } from 'lucide-react'
-import { useStore, uid } from '../store/useStore'
+import { useStore, uid, workspaceOf } from '../store/useStore'
 import type { DmaicProject, MrpMethod } from '../store/types'
 import { Badge, Button, Card, Field, Input, Note, PageHeader, Select, TextArea } from '../components/ui'
 import { ProgressBar } from '../components/PhaseNav'
 import { ask } from '../lib/dialog'
+import { blankScenario } from '../data/realScenario'
 import { PHASES } from '../workflow/phases'
 import { METHOD_LABEL, emptyProject, isLight, phaseProgress, projectProgress } from '../workflow/project'
+
+const BLANK = '__blank'
 
 const CHOICES: { id: MrpMethod; title: string; when: string }[] = [
   { id: 'dmaic', title: 'DMAIC complet', when: 'Cause inconnue, variabilité, données à analyser. Plusieurs semaines à plusieurs mois. Tous les outils, statistiques comprises.' },
@@ -17,7 +20,7 @@ const CHOICES: { id: MrpMethod; title: string; when: string }[] = [
   { id: '8d', title: '8D', when: 'Réclamation client ou défaut à contenir vite, puis éradiquer. Parcours allégé.' },
 ]
 
-function NewProject({ onClose }: { onClose: () => void }) {
+export function NewProject({ onClose, blank = false }: { onClose: () => void; blank?: boolean }) {
   const scenarios = useStore((s) => s.scenarios)
   const activeId = useStore((s) => s.activeId)
   const setTools = useStore((s) => s.setTools)
@@ -27,12 +30,17 @@ function NewProject({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('')
   const [problem, setProblem] = useState('')
   const [method, setMethod] = useState<MrpMethod>('dmaic')
-  const [source, setSource] = useState(activeId)
+  const addScenario = useStore((s) => s.addScenario)
+  const [source, setSource] = useState(blank ? BLANK : activeId)
   const [copy, setCopy] = useState(true)
 
   const create = () => {
     const n = name.trim() || 'Nouveau projet'
-    const scId = copy ? duplicateScenario(source, `${n} — état actuel`) : source
+    let scId = source
+    if (source === BLANK) {
+      scId = uid('sc')
+      addScenario(blankScenario(scenarios[0], `${n} — ma ligne`, scId))
+    } else if (copy) scId = duplicateScenario(source, `${n} — état actuel`)
     const p = emptyProject(uid('dmaic'), n, scId, method, problem.trim())
     setTools((t) => t.dmaic.push(p))
     openProject(p.id)
@@ -51,9 +59,13 @@ function NewProject({ onClose }: { onClose: () => void }) {
           </Field>
           <Field label="Ligne de production étudiée (scénario de départ)">
             <Select value={source} onChange={(e) => setSource(e.target.value)}>
+              <option value={BLANK}>Ligne vierge — je décris ma propre ligne</option>
               {scenarios.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </Select>
           </Field>
+          {source === BLANK ? (
+            <p className="text-xs text-[var(--muted)]">Une ligne de 3 postes génériques est créée. Vous la décrirez en phase Définir (1.3 « Ligne de production ») ou en important vos données (2.3 « Mes données »).</p>
+          ) : (
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-1 accent-[var(--color-brand-600)]" checked={copy} onChange={(e) => setCopy(e.target.checked)} />
             <span>
@@ -61,6 +73,7 @@ function NewProject({ onClose }: { onClose: () => void }) {
               <span className="block text-xs text-[var(--muted)]">SMED, Kanban, 5S, spaghetti et réglages auront alors des données propres à ce projet, sans toucher aux autres.</span>
             </span>
           </label>
+          )}
         </div>
         <div>
           <div className="mb-1.5 text-sm font-medium">Démarche</div>
@@ -107,12 +120,14 @@ function ProjectCard({ p, current }: { p: DmaicProject; current: boolean }) {
   const duplicate = () => {
     const name = `${p.name} (copie)`
     const scId = sc ? duplicateScenario(p.scenarioId, `${name} — état actuel`) : p.scenarioId
-    const c: DmaicProject = { ...structuredClone(p), id: uid('dmaic'), name, scenarioId: scId, createdAt: new Date().toISOString() }
+    const c: DmaicProject = { ...structuredClone(p), id: uid('dmaic'), name, scenarioId: scId, createdAt: new Date().toISOString(), ws: structuredClone(workspaceOf(useStore.getState(), p)) }
     setTools((t) => t.dmaic.push(c))
     openProject(c.id)
   }
   const remove = () => {
     if (!ask(`Supprimer le projet « ${p.name} » ? Son scénario reste disponible dans Scénarios.`)) return
+    const others = useStore.getState().tools.dmaic.filter((x) => x.id !== p.id)
+    if (current && others.length) openProject(others[0].id)
     setTools((t) => {
       t.dmaic = t.dmaic.filter((x) => x.id !== p.id)
     })
@@ -162,7 +177,7 @@ export default function ProjectsPage() {
   const projects = useStore((s) => s.tools.dmaic)
   const currentId = useStore((s) => s.currentProjectId) ?? projects[0]?.id
   const [params, setParams] = useSearchParams()
-  const [creating, setCreating] = useState(params.get('new') === '1' || projects.length === 0)
+  const [creating, setCreating] = useState(params.get('new') === '1' || params.get('new') === 'blank' || projects.length === 0)
   const close = () => {
     setCreating(false)
     if (params.get('new')) setParams({}, { replace: true })
@@ -175,7 +190,7 @@ export default function ProjectsPage() {
         subtitle="Un projet = un problème traité de bout en bout selon la démarche, avec son avancement et ses données"
         actions={!creating && <Button variant="primary" onClick={() => setCreating(true)}><Plus size={15} /> Nouveau projet</Button>}
       />
-      {creating && <NewProject onClose={close} />}
+      {creating && <NewProject onClose={close} blank={params.get('new') === 'blank'} />}
       {projects.length === 0 ? (
         <Note>Aucun projet pour l'instant. Créez-en un pour commencer la démarche.</Note>
       ) : (

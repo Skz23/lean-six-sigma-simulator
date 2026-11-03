@@ -67,3 +67,10 @@ Scenario (configuration) ──► LineSimulation ──► SimResults (pièces,
 ## Projets
 
 Un projet (`DmaicProject`, `tools.dmaic`) porte sa démarche (`method` : DMAIC complet ou parcours allégé Kaizen / A3 / 8D), sa phase en cours, les outils faits et les résultats retenus (clé « sous-étape:outil », ex. `2.2:msa`), les cases de revue de fin de phase et ses scénarios. Le projet en cours (`currentProjectId`) est choisi en haut de l'écran ; l'ouvrir active son scénario. Les outils SMED (`tools.smed`, clé scénario:poste), 5S (`tools.fiveS`, clé scénario), Kanban (`tools.kanban`, clé scénario) et spaghetti (positions des postes du scénario) sont rattachés au scénario : un projet créé avec sa propre copie de scénario a donc des données propres. Les calculs d'avancement sont dans `src/workflow/project.ts` (testés).
+
+## Projets de A à Z, rappels de cours et livrables
+
+- Au lancement, `Welcome` propose : reprendre son projet, créer un projet de A à Z (ligne vierge `blankScenario` possible) ou voir l'exemple MécaPrécis.
+- Données propres au projet : en plus du scénario, l'AMDEC, le registre des défauts, le Kaizen et les fiches problème / Kano (`ProjectWorkspace`). Le projet en cours les garde dans `tools` ; `openProject` range celles du projet quitté dans `project.ws` et sort celles du projet ouvert. `workspaceOf` lit celles de n'importe quel projet. Ishikawa et 5 Pourquoi étaient déjà dans le projet.
+- Rappels de cours (`src/workflow/lessons.ts`) : un par outil (à quoi ça sert, comment faire, à savoir) affiché en tête de l'outil, un par phase (l'essentiel, pièges fréquents). Rédaction propre à l'appli.
+- Livrables PDF (`src/report/projectPdf.ts`, contenu assemblé par `projectContent.ts`, testé) : rapport de projet, revue d'une phase, A3 (A3 paysage) et 8D. Ce qui est écrit à la main dans les fiches A3 / 8D est prioritaire ; sinon le texte est composé à partir de la charte, des résultats retenus, du Pareto, des causes, des solutions retenues, des actions et du plan de contrôle.

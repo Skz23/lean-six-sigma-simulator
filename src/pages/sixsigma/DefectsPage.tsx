@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useCurrentTool, useUrlTab } from '../../lib/useUrlTab'
 import { Download, Plus, SearchCheck, Trash2 } from 'lucide-react'
-import { useActiveScenario, useStore, uid } from '../../store/useStore'
+import { useActiveScenario, useCurrentProject, useStore, uid } from '../../store/useStore'
 import { useSimulation } from '../../store/useSimulation'
 import { Button, Card, Field, Input, Kpi, Note, NumberInput, PageHeader, Select, Table, Tabs } from '../../components/ui'
 import { ParetoChart } from '../../components/charts'
@@ -24,8 +24,8 @@ export default function DefectsPage() {
   const dsSel = datasets.find((d) => d.id === source)
   const [paretoBy, setParetoBy] = useState<'count' | 'cost'>('count')
   const [threshold, setThreshold] = useState(100)
-  const [projectId, setProjectId] = useState(tools.dmaic[0]?.id)
-  const project = tools.dmaic.find((p) => p.id === projectId)
+  const project = useCurrentProject()
+  const projectId = project?.id
   const setProject = (fn: (p: DmaicProject) => void) =>
     setTools((t) => {
       const p = t.dmaic.find((x) => x.id === projectId)
@@ -152,14 +152,6 @@ export default function DefectsPage() {
           </div>
           <p className="mt-3 text-xs text-[var(--muted)]">Coût total enregistré : {eur(log.reduce((s, d) => s + d.count * d.cost, 0))}</p>
         </Card>
-      )}
-      {(tab === 'ishikawa' || tab === 'why' || tab === 'root') && (
-        <div className="mb-3 flex items-center gap-2 text-sm">
-          <span className="text-[var(--text-secondary)]">Projet DMAIC :</span>
-          <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="w-96">
-            {tools.dmaic.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </Select>
-        </div>
       )}
       {tab === 'ishikawa' && project && (
         <div className="space-y-4">

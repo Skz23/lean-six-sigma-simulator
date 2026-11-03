@@ -7,7 +7,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import type { Scenario } from '../engine/types'
 import { demoScenarios } from '../data/demo'
 import { demoTools } from '../data/demoTools'
-import type { ToolsState, WidgetId } from './types'
+import type { DmaicProject, ProjectWorkspace, ToolsState, WidgetId } from './types'
 import type { Dataset } from '../data/import'
 import { DASHBOARD_WIDGETS } from './types'
 
@@ -50,6 +50,15 @@ interface State {
   importAll: (data: Partial<State>) => void
 }
 
+export const emptyWorkspace = (): ProjectWorkspace => ({ fmea: [], defectLog: [], kaizen: [], mrp: { sheets: [], kano: [] } })
+
+/** Données des outils d'un projet, qu'il soit en cours (dans tools) ou rangé (dans ws). */
+export function workspaceOf(st: { tools: ToolsState; currentProjectId?: string }, p: DmaicProject): ProjectWorkspace {
+  const cur = st.currentProjectId ?? st.tools.dmaic[0]?.id
+  if (p.id === cur) return { fmea: st.tools.fmea, defectLog: st.tools.defectLog, kaizen: st.tools.kaizen, mrp: st.tools.mrp }
+  return p.ws ?? emptyWorkspace()
+}
+
 export const uid = (p = 'id') => `${p}-${Math.random().toString(36).slice(2, 9)}${Date.now().toString(36).slice(-3)}`
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x))
 
@@ -86,10 +95,24 @@ export const useStore = create<State>()(
       setActive: (id) => set({ activeId: id }),
       openProject: (id) =>
         set((st) => {
-          const p = st.tools.dmaic.find((x) => x.id === id)
-          if (!p) return st
-          const sc = st.scenarios.some((x) => x.id === p.scenarioId) ? p.scenarioId : st.activeId
-          return { currentProjectId: id, activeId: sc }
+          const target = st.tools.dmaic.find((x) => x.id === id)
+          if (!target) return st
+          const activeId = st.scenarios.some((x) => x.id === target.scenarioId) ? target.scenarioId : st.activeId
+          const curId = st.currentProjectId ?? st.tools.dmaic[0]?.id
+          if (curId === id) return { currentProjectId: id, activeId }
+          // Les données des outils du projet sont « en ligne » dans tools pour le projet en cours :
+          // on range celles du projet quitté et on sort celles du projet ouvert.
+          const tools = clone(st.tools)
+          const old = tools.dmaic.find((x) => x.id === curId)
+          if (old) old.ws = { fmea: tools.fmea, defectLog: tools.defectLog, kaizen: tools.kaizen, mrp: tools.mrp }
+          const nw = tools.dmaic.find((x) => x.id === id)!
+          const ws = nw.ws ?? emptyWorkspace()
+          tools.fmea = ws.fmea
+          tools.defectLog = ws.defectLog
+          tools.kaizen = ws.kaizen
+          tools.mrp = ws.mrp
+          delete nw.ws
+          return { currentProjectId: id, activeId, tools }
         }),
       updateScenario: (id, fn, versionLabel) =>
         set((st) => {

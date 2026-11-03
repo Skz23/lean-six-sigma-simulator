@@ -87,3 +87,30 @@ export function calibrateProcess(sc: Scenario, ds: Dataset): Calibration {
   m.batchSd = batchSd
   return { mean: cap.mean, sigmaWithin: cap.sigmaWithin, sigmaOverall: cap.sigmaOverall, batchSd, subgroupSize: n }
 }
+
+/** Ligne vierge à décrire (projet « de A à Z ») : 3 postes génériques aux valeurs neutres, à remplacer par les vôtres. */
+export function blankScenario(base: Scenario, name: string, id: string): Scenario {
+  const st = (i: number): Station => ({
+    id: `poste-${i}`,
+    name: `Poste ${i} (à renommer)`,
+    cycleTime: 60,
+    cycleTimeCV: 0.1,
+    changeoverTime: 0,
+    operators: 1,
+    availability: 0.95,
+    mttr: 10,
+    defectRate: 0.01,
+    capacity: 1,
+    bufferCapacity: 20,
+    initialWip: 0,
+    valueAdded: true,
+    distanceToNext: 5,
+    x: 10 + (i - 1) * 15,
+    y: 10,
+    defectTypes: ['Défaut'],
+  })
+  const s = scenarioFromStations(base, [st(1), st(2), st(3)], name, id)
+  s.description = 'Ligne vierge : décrivez vos postes dans « Ligne de production » ou importez-les depuis « Mes données ».'
+  s.company = { name: 'Mon entreprise', sector: '', product: '', description: '' }
+  return s
+}

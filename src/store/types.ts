@@ -114,6 +114,16 @@ export interface DmaicProject {
   results?: Record<string, string>
   /** cases de la revue de fin de phase */
   gateChecks?: Partial<Record<DmaicPhase, boolean[]>>
+  /** données des outils du projet quand il n'est pas le projet en cours (voir openProject) */
+  ws?: ProjectWorkspace
+}
+
+/** Outils dont les données appartiennent au projet : AMDEC, registre des défauts, Kaizen, fiches problème et Kano. */
+export interface ProjectWorkspace {
+  fmea: FmeaRow[]
+  defectLog: DefectRecord[]
+  kaizen: KaizenItem[]
+  mrp?: MrpState
 }
 
 export interface KanbanParams {

@@ -1,12 +1,14 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import clsx from 'clsx'
-import { ArrowLeft, ArrowRight, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck, Plus } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Circle, FolderOpen, HelpCircle, PackageCheck, Plus } from 'lucide-react'
 import { useCurrentProject, useStore } from '../store/useStore'
 import type { DmaicProject } from '../store/types'
 import { Badge, Button, Card, Note } from '../components/ui'
+import { ProjectExports } from '../components/ProjectExports'
 import { PhaseIcon, PhaseStrip, ProgressBar, ToolCard } from '../components/PhaseNav'
 import { PHASES, phaseById, rememberPhase, toolById } from '../workflow/phases'
+import { PHASE_LESSONS } from '../workflow/lessons'
 import { METHOD_LABEL, doneKey, isLight, phaseProgress, stepsFor } from '../workflow/project'
 
 export default function PhasePage() {
@@ -78,6 +80,14 @@ export default function PhasePage() {
               </li>
             ))}
           </ul>
+          <div className="mt-4 rounded-lg bg-brand-500/[.06] p-3 text-sm">
+            <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-brand-700 uppercase dark:text-brand-300"><BookOpen size={13} /> Rappel de cours</div>
+            <p>{PHASE_LESSONS[phase.id].key}</p>
+            <div className="mt-2 text-xs font-semibold text-[var(--text-secondary)]">Pièges fréquents</div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[13px] text-[var(--text-secondary)]">
+              {PHASE_LESSONS[phase.id].pitfalls.map((x) => <li key={x}>{x}</li>)}
+            </ul>
+          </div>
         </Card>
         <Card title="Projet en cours" className="lg:col-span-5">
           {proj ? (
@@ -176,6 +186,12 @@ export default function PhasePage() {
           <ul className="list-disc space-y-1 pl-5 text-sm">
             {phase.deliverables.map((d) => <li key={d}>{d}</li>)}
           </ul>
+          {proj && (
+            <div className="mt-3 border-t border-black/[.06] pt-3 dark:border-white/[.08]">
+              <div className="mb-2 text-xs text-[var(--text-secondary)]">Exporter, rempli avec les données du projet :</div>
+              <ProjectExports phase={phase.id} />
+            </div>
+          )}
         </Card>
         <Card title={<span className="flex items-center gap-2"><CheckCircle2 size={15} /> Revue de fin de phase (tollgate)</span>} subtitle="Cochez quand c'est vrai pour votre projet">
           <ul className="space-y-1.5 text-sm">

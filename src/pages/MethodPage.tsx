@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCurrentTool, useUrlTab } from '../lib/useUrlTab'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { CartesianGrid, LabelList, ReferenceLine, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts'
 import { Compass, Plus, Trash2, Trophy } from 'lucide-react'
-import { useStore, uid } from '../store/useStore'
+import { useCurrentProject, useStore, uid } from '../store/useStore'
 import type { KanoItem, MrpMethod, MrpState, ProblemSheet } from '../store/types'
 import { KANO_LABEL, kanoClassify, kanoSummary, type KanoAnswer } from '../stats/advanced'
 import { Badge, Button, Card, Field, Input, Note, NumberInput, PageHeader, Select, Table, Tabs, TextArea } from '../components/ui'
 import { ChartBox, S, axisProps, tooltipStyle } from '../components/charts'
 import { ask } from '../lib/dialog'
+import { A3, D8 } from '../data/mrp'
 import { fmt, pct } from '../lib/format'
 
 const TABS = ['choose', 'qqoqcpc', '8d', 'a3', 'ideas', 'vote', 'kano'] as const
@@ -31,29 +32,6 @@ const QQ: { key: keyof ProblemSheet['qqoqcpc']; label: string; hint: string }[] 
   { key: 'comment', label: 'Comment ?', hint: 'Sous quelle forme, avec quels moyens, comment est-il détecté ?' },
   { key: 'pourquoi', label: 'Pourquoi ?', hint: 'Pourquoi est-ce un problème ? Quel impact ?' },
   { key: 'combien', label: 'Combien ?', hint: 'Nombre, coût, fréquence chiffrée' },
-]
-
-const D8 = [
-  ['D0', 'Préparer et réagir', 'Symptômes, urgence : faut-il lancer un 8D ? Actions d\'urgence immédiates.'],
-  ['D1', 'Constituer l\'équipe', 'Pilote, membres pluridisciplinaires, sponsor.'],
-  ['D2', 'Décrire le problème', 'QQOQCPC, données, indicateur.'],
-  ['D3', 'Actions de confinement', 'Protéger le client : tri, blocage des stocks, contrôle renforcé.'],
-  ['D4', 'Identifier les causes racines', 'Cause d\'apparition ET cause de non-détection (Ishikawa, 5 Pourquoi, vérification par les données).'],
-  ['D5', 'Choisir les actions correctives permanentes', 'Vérifier qu\'elles éliminent la cause sans effet secondaire.'],
-  ['D6', 'Mettre en œuvre et valider', 'Déployer, retirer le confinement, mesurer l\'indicateur avant / après.'],
-  ['D7', 'Prévenir la récurrence', 'Standardiser, mettre à jour AMDEC et plans de contrôle, généraliser aux produits similaires.'],
-  ['D8', 'Féliciter l\'équipe', 'Reconnaître le travail, capitaliser le retour d\'expérience.'],
-]
-
-const A3 = [
-  ['contexte', '1. Contexte', 'Pourquoi traiter ce sujet ? Enjeu pour l\'entreprise.'],
-  ['actuel', '2. Situation actuelle', 'Faits, chiffres, schéma du processus, indicateur.'],
-  ['objectif', '3. Objectif', 'Cible mesurable et échéance.'],
-  ['causes', '4. Analyse des causes', 'Ishikawa, 5 Pourquoi, Pareto.'],
-  ['contremesures', '5. Contre-mesures', 'Solutions retenues face à chaque cause racine.'],
-  ['plan', '6. Plan d\'action', 'Qui, quoi, quand.'],
-  ['suivi', '7. Suivi des résultats', 'Indicateur avant / après.'],
-  ['standard', '8. Standardisation', 'Ce qui change durablement, partage des bonnes pratiques.'],
 ]
 
 const KANO_Q: { v: KanoAnswer; label: string }[] = [
@@ -118,6 +96,12 @@ export default function MethodPage() {
       if (!t.mrp) t.mrp = JSON.parse(JSON.stringify(mrp))
       fn(t.mrp!)
     })
+  const project = useCurrentProject()
+  // Projet neuf : sa première fiche problème est créée à son nom
+  const empty = !!stored && stored.sheets.length === 0
+  useEffect(() => {
+    if (empty) setTools((t) => t.mrp!.sheets.push(newSheet(project?.name ?? 'Problème')))
+  }, [empty, project?.name, setTools])
   const tool = useCurrentTool()
   const [tab, setTab, solo] = useUrlTab<Tab>('choose', TABS)
   const [sel, setSel] = useState(mrp.sheets[0]?.id)

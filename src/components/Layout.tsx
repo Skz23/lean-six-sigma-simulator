@@ -5,6 +5,8 @@ import { Home, FolderOpen, Database, FolderKanban, FileText, Wrench, BookMarked,
 import { useCurrentProject, useStore } from '../store/useStore'
 import { PHASES, lastPhase, rememberPhase, stepsOf, toolsAt } from '../workflow/phases'
 import { PhaseIcon } from './PhaseNav'
+import { Welcome } from './Welcome'
+import { LessonBox } from './LessonBox'
 
 interface NavItem {
   to: string
@@ -129,31 +131,34 @@ function ToolContext() {
   const main = occ.find((o) => o.phase.id === current) ?? occ[0]
   const others = occ.filter((o) => o !== main)
   return (
-    <div className="no-print mb-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--text-secondary)]">
-      {main && (
-        <>
-          <Link to={`/dmaic/${main.phase.id}`} className={clsx(crumb, 'bg-brand-600/10 text-brand-700 dark:text-brand-300')}>
-            {main.phase.n} · {main.phase.label}
-          </Link>
-          <ChevronRight size={13} />
-          <Link to={`/dmaic/${main.phase.id}`} className={crumb}>
-            {main.step.n} {main.step.title}
-          </Link>
-          <ChevronRight size={13} />
-        </>
-      )}
-      <span className="font-medium text-[var(--text-primary)]">{main?.role ?? t.name}</span>
-      {others.length > 0 && (
-        <span className="ml-2 flex flex-wrap items-center gap-1 text-[var(--muted)]">
-          aussi en
-          {others.map((o) => (
-            <Link key={o.step.n} to={`/dmaic/${o.phase.id}`} onClick={() => rememberPhase(o.phase.id)} className={crumb}>
-              {o.step.n} {o.role ? `(${o.role.toLowerCase()})` : o.step.title}
+    <>
+      <div className="no-print mb-4 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--text-secondary)]">
+        {main && (
+          <>
+            <Link to={`/dmaic/${main.phase.id}`} className={clsx(crumb, 'bg-brand-600/10 text-brand-700 dark:text-brand-300')}>
+              {main.phase.n} · {main.phase.label}
             </Link>
-          ))}
-        </span>
-      )}
-    </div>
+            <ChevronRight size={13} />
+            <Link to={`/dmaic/${main.phase.id}`} className={crumb}>
+              {main.step.n} {main.step.title}
+            </Link>
+            <ChevronRight size={13} />
+          </>
+        )}
+        <span className="font-medium text-[var(--text-primary)]">{main?.role ?? t.name}</span>
+        {others.length > 0 && (
+          <span className="ml-2 flex flex-wrap items-center gap-1 text-[var(--muted)]">
+            aussi en
+            {others.map((o) => (
+              <Link key={o.step.n} to={`/dmaic/${o.phase.id}`} onClick={() => rememberPhase(o.phase.id)} className={crumb}>
+                {o.step.n} {o.role ? `(${o.role.toLowerCase()})` : o.step.title}
+              </Link>
+            ))}
+          </span>
+        )}
+      </div>
+      <LessonBox id={t.id} />
+    </>
   )
 }
 
@@ -218,6 +223,7 @@ export default function Layout() {
   }, [loc.pathname])
   return (
     <div className="flex h-full">
+      <Welcome />
       <aside className="hidden w-60 shrink-0 lg:block">
         <Sidebar />
       </aside>

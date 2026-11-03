@@ -91,7 +91,7 @@ export const PHASES: Phase[] = [
     steps: [
       { n: '3.1', title: 'Hiérarchiser les problèmes', hint: 'S\'attaquer d\'abord à ce qui pèse le plus.', tools: [{ id: 'pareto' }, { id: 'muda' }, { id: 'toc' }, { id: 'spaghetti', role: 'Mesurer les déplacements' }] },
       { n: '3.2', title: 'Lister les causes possibles', hint: 'Toutes les hypothèses, en groupe, sans les juger encore.', tools: [{ id: 'ideas', role: 'Idées de causes' }, { id: 'ishikawa' }, { id: 'why' }, { id: 'fmea', role: 'Modes de défaillance et causes' }] },
-      { n: '3.3', title: 'Vérifier les causes par les données', hint: 'Une cause n\'est retenue que si les données la confirment.', tools: [{ id: 'corr' }, { id: 'explore' }, { id: 'anova' }, { id: 'tests', role: 'Comparer des groupes' }, { id: 'chi2' }, { id: 'process', role: 'Effet des réglages sur le CTQ' }] },
+      { n: '3.3', title: 'Vérifier les causes par les données', hint: 'Une cause n\'est retenue que si les données la confirment. Commencez par l\'assistant « Quel test ? » : il choisit le bon test.', tools: [{ id: 'wizard' }, { id: 'corr' }, { id: 'explore' }, { id: 'anova' }, { id: 'tests' }, { id: 'chi2' }, { id: 'process', role: 'Effet des réglages sur le CTQ' }] },
       { n: '3.4', title: 'Retenir les causes racines', hint: 'Synthèse des causes prouvées et de leur poids.', tools: [{ id: 'root' }, { id: 'plan', role: 'Diagnostic automatique' }] },
     ],
   },
@@ -133,7 +133,7 @@ export const PHASES: Phase[] = [
     deliverables: ['Capabilité après amélioration', 'Cartes de contrôle en place', 'Plan de contrôle et standards', 'Bilan des gains et rapport de clôture'],
     gate: ['Le processus est sous contrôle et capable', 'Le propriétaire du processus a repris la main', 'Le projet est documenté et clôturé'],
     steps: [
-      { n: '5.1', title: 'Confirmer le résultat', hint: 'Comparer à la situation de départ mesurée en phase 2.', tools: [{ id: 'capability', role: 'Capabilité après amélioration' }, { id: 'kpi', role: 'Indicateurs après amélioration' }, { id: 'tests', role: 'Écart avant / après significatif ?' }] },
+      { n: '5.1', title: 'Confirmer le résultat', hint: 'Comparer à la situation de départ mesurée en phase 2.', tools: [{ id: 'capability', role: 'Capabilité après amélioration' }, { id: 'kpi', role: 'Indicateurs après amélioration' }] },
       { n: '5.2', title: 'Surveiller le processus', hint: 'Détecter une dérive avant qu\'elle ne produise des défauts.', tools: [{ id: 'spc' }, { id: 'control-plan' }] },
       { n: '5.3', title: 'Standardiser', hint: 'Les nouvelles pratiques deviennent la règle.', tools: [{ id: '5s' }, { id: 'kaizen' }] },
       { n: '5.4', title: 'Clôturer et capitaliser', hint: 'Bilan, documentation et passage de relais.', tools: [{ id: 'reports' }, { id: 'a3' }, { id: '8d' }] },
@@ -180,6 +180,7 @@ const CATALOG: Omit<Tool, 'phases'>[] = [
   { id: 'ishikawa', name: 'Ishikawa 6M', to: '/sixsigma/defects/ishikawa', family: 'Qualité', desc: 'Causes possibles classées en Matière, Milieu, Méthode, Matériel, Main-d\'œuvre, Mesure.' },
   { id: 'why', name: '5 Pourquoi', to: '/sixsigma/defects/why', family: 'Qualité', desc: 'Remonter d\'un symptôme à sa cause racine.' },
   { id: 'fmea', name: 'AMDEC / NPR', to: '/sixsigma/defects/fmea', family: 'Qualité', desc: 'Modes de défaillance, gravité × occurrence × détection, actions.' },
+  { id: 'wizard', name: 'Quel test ? — assistant statistique', to: '/analyse/quel-test', family: 'Statistiques', desc: 'Dites ce que vous voulez savoir, collez vos données : l\'appli vérifie normalité et variances, choisit le test (paramétrique ou non) et conclut.' },
   { id: 'corr', name: 'Corrélation et régression', to: '/sixsigma/stats/corr', family: 'Statistiques', desc: 'Quel paramètre influence le CTQ, et de combien.' },
   { id: 'explore', name: 'Boîtes à moustaches et multi-vari', to: '/sixsigma/stats/explore', family: 'Statistiques', desc: 'D\'où vient la variation : pièce à pièce, temps ou lots.' },
   { id: 'anova', name: 'ANOVA', to: '/sixsigma/stats/anova', family: 'Statistiques', desc: 'Comparer les moyennes de plusieurs groupes (machines, équipes, lots).' },

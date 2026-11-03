@@ -6,7 +6,7 @@ import { PHASES, type Phase, type PhaseId, type Step, type StepTool } from './ph
 export const LIGHT_TOOLS = new Set([
   'qqoqcpc', 'voc', 'sipoc', 'vsm', 'charter',
   'defect-log', 'data', 'simulation', 'kpi', 'capability',
-  'pareto', 'muda', 'toc', 'ideas', 'ishikawa', 'why', 'root', 'plan',
+  'pareto', 'muda', 'toc', 'wizard', 'ideas', 'ishikawa', 'why', 'root', 'plan',
   'smed', 'kanban', 'vote', 'scenarios',
   'spc', 'control-plan', '5s', 'kaizen', 'a3', '8d',
 ])

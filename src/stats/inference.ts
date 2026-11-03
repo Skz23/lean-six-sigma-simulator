@@ -35,10 +35,12 @@ function pFromZ(z: number, alt: Alternative): number {
 
 const conclude = (p: number, alpha: number, h1: string, h0: string) =>
   p < alpha
-    ? `p = ${fmtP(p)} < α = ${alpha} : on rejette H0. ${h1}`
-    : `p = ${fmtP(p)} ≥ α = ${alpha} : on ne peut pas rejeter H0. ${h0}`
+    ? `${pEq(p)} < α = ${alpha} : on rejette H0. ${h1}`
+    : `${pEq(p)} ≥ α = ${alpha} : on ne peut pas rejeter H0. ${h0}`
 
 export const fmtP = (p: number) => (p < 0.0001 ? '< 0,0001' : p.toFixed(4).replace('.', ','))
+/** « p = 0,0123 » ou « p < 0,0001 » */
+export const pEq = (p: number) => (p < 0.0001 ? 'p < 0,0001' : `p = ${fmtP(p)}`)
 
 /** Test t à un échantillon : H0 μ = μ0. */
 export function tTestOneSample(xs: number[], mu0: number, alpha = 0.05, alt: Alternative = 'two-sided'): TestResult {
@@ -390,7 +392,7 @@ export function andersonDarling(xs: number[], alpha = 0.05): NormalityResult {
     normal: p >= alpha,
     conclusion:
       p >= alpha
-        ? `p = ${fmtP(p)} ≥ ${alpha} : l'hypothèse de normalité n'est pas rejetée ; l'utilisation de la loi normale (courbe, PPM attendus) est justifiée.`
-        : `p = ${fmtP(p)} < ${alpha} : les données ne suivent pas une loi normale. Les PPM attendus calculés sous hypothèse normale sont à interpréter avec prudence ; privilégier les PPM observés ou une transformation.`,
+        ? `${pEq(p)} ≥ ${alpha} : l'hypothèse de normalité n'est pas rejetée ; l'utilisation de la loi normale (courbe, PPM attendus) est justifiée.`
+        : `${pEq(p)} < ${alpha} : les données ne suivent pas une loi normale. Les PPM attendus calculés sous hypothèse normale sont à interpréter avec prudence ; privilégier les PPM observés ou une transformation.`,
   }
 }

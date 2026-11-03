@@ -157,6 +157,11 @@ export const LESSONS: Record<string, Lesson> = {
     how: ['Lister les modes de défaillance par étape', 'Noter gravité, occurrence et détection (1 à 10)', 'Calculer NPR = G × O × D et traiter les plus élevés', 'Réévaluer après action'],
     tips: ['Une gravité élevée se traite même si le NPR est moyen'],
   },
+  wizard: {
+    why: 'Choisir le bon test statistique sans se tromper, en suivant l\'algorithme de décision : conditions d\'abord, test ensuite, conclusion pratique enfin.',
+    how: ['Dire ce que l\'on cherche : comparer des groupes, comparer à une cible, comparer des dispersions, lier deux mesures, lier deux catégories', 'Coller les données (une colonne par groupe)', 'L\'appli vérifie la normalité (Anderson-Darling) puis l\'égalité des variances', 'Elle choisit le test : t, Welch, apparié, ANOVA, ou leur équivalent non paramétrique (Mann-Whitney, Wilcoxon, Kruskal-Wallis, Levene, Spearman)', 'Lire la conclusion et la noter comme preuve'],
+    tips: ['p < α : différence prouvée ; p ≥ α : pas de preuve (pas forcément pas de différence : l\'échantillon est peut-être trop petit)', 'Des données non normales cachent souvent un mélange (deux machines, deux équipes) : cherchez la cause avant de conclure', 'Un résultat significatif n\'est pas forcément important : regardez aussi l\'ampleur de l\'écart'],
+  },
   corr: {
     why: 'Vérifier si un paramètre est lié au CTQ, et de combien il le fait varier.',
     how: ['Tracer le nuage de points paramètre / CTQ', 'Lire le coefficient r et sa p-valeur', 'Ajuster une régression pour chiffrer l\'effet'],
